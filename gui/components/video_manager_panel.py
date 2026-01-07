@@ -153,11 +153,11 @@ class VideoManagerPanel(ctk.CTkFrame):
         self.grid_columnconfigure(1, weight=3)  # 右側：預覽與編輯
         self.grid_rowconfigure(0, weight=1)
 
+        # === 右側面板：預覽與重新命名 (先建立，因為左側會用到) ===
+        self._create_right_panel()
+
         # === 左側面板：影片列表 ===
         self._create_left_panel()
-
-        # === 右側面板：預覽與重新命名 ===
-        self._create_right_panel()
 
     def _create_left_panel(self):
         """建立左側面板 - 影片列表"""
