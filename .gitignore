@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+venv/
+.venv/
+env/
+
+# Environment variables
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Output files
+subtitles/*.srt
+subtitles/*.json
+*.log
+
+# Video files (too large to commit)
+videos/*.mp4
+videos/*.mov
+videos/*.avi
+videos/*.mkv
+videos/*.webm
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Jianying draft output
+翻譯專案_*/

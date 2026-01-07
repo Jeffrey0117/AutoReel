@@ -1,0 +1,94 @@
+# =============================================================================
+# Video Translation Project - Requirements
+# =============================================================================
+# Project: video-translate-project
+# Description: Automatic speech recognition + translation + JianYing subtitle draft generation
+# Last Updated: 2025-12-30
+#
+# Installation:
+#   pip install -r requirements.txt
+#
+# For CUDA/GPU support, install PyTorch with CUDA first:
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Core Speech Recognition - Choose ONE engine
+# -----------------------------------------------------------------------------
+
+# [RECOMMENDED] Faster-Whisper - CTranslate2 optimized implementation
+# Benefits: 4x faster, uses 2-3x less memory, better for production
+# Requires: CUDA toolkit 11.x or 12.x for GPU acceleration
+faster-whisper>=1.0.0
+
+# [ALTERNATIVE] OpenAI Whisper - Original implementation
+# Uncomment below if you prefer the original OpenAI Whisper or need specific features
+# Note: Requires more VRAM and is slower, but has broader compatibility
+# openai-whisper>=20231117
+
+# -----------------------------------------------------------------------------
+# PyTorch - Required for both Whisper implementations
+# -----------------------------------------------------------------------------
+# NOTE: For CUDA/GPU acceleration, install PyTorch manually BEFORE other packages:
+#
+# CUDA 12.1 (Recommended for newer GPUs):
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+#
+# CUDA 11.8 (For older systems):
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+#
+# CPU Only (No GPU):
+#   pip install torch torchvision torchaudio
+#
+# The packages below will be installed, but GPU support depends on correct PyTorch installation
+# torch>=2.0.0
+# torchvision>=0.15.0
+# torchaudio>=2.0.0
+
+# -----------------------------------------------------------------------------
+# Translation - Google Translate (free, no API key required)
+# -----------------------------------------------------------------------------
+googletrans==4.0.0-rc1
+
+# -----------------------------------------------------------------------------
+# Audio Processing
+# -----------------------------------------------------------------------------
+# FFmpeg-python for audio extraction (requires FFmpeg installed on system)
+ffmpeg-python>=0.2.0
+
+# Pydub for audio manipulation
+pydub>=0.25.1
+
+# -----------------------------------------------------------------------------
+# Utilities
+# -----------------------------------------------------------------------------
+# Progress bars
+tqdm>=4.65.0
+
+# NumPy for numerical operations (required by Whisper)
+numpy>=1.24.0
+
+# Requests for API calls
+requests>=2.28.0
+
+# -----------------------------------------------------------------------------
+# Optional: Development and Testing
+# -----------------------------------------------------------------------------
+# pytest>=7.0.0
+# black>=23.0.0
+# flake8>=6.0.0
+
+# -----------------------------------------------------------------------------
+# Optional: Additional features
+# -----------------------------------------------------------------------------
+# For better VAD (Voice Activity Detection) with faster-whisper
+# silero-vad>=0.1.0
+
+# For subtitle format conversion
+# pysrt>=1.1.2
+# webvtt-py>=0.4.6
+
+# -----------------------------------------------------------------------------
+# GUI - CustomTkinter (Modern Tkinter UI)
+# -----------------------------------------------------------------------------
+customtkinter>=5.2.0

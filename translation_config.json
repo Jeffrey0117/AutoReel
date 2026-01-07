@@ -1,0 +1,129 @@
+{
+  "whisper": {
+    "model": "base",
+    "language": "en",
+    "device": "auto",
+    "max_words_per_segment": 8,
+    "engine": "faster-whisper",
+    "compute_type": "int8",
+    "vad_filter": true,
+    "vad_parameters": {
+      "min_silence_duration_ms": 500
+    }
+  },
+  "translation": {
+    "provider": "deepseek",
+    "source_lang": "en",
+    "target_lang": "zh-TW",
+    "api_key": "",
+    "api_key_env": "DEEPSEEK_API_KEY",
+    "base_url": "https://api.deepseek.com",
+    "model": "deepseek-chat"
+  },
+  "subtitle_style": {
+    "font_resource_id": "6807742980271641102",
+    "font_path": "C:/Users/jeffb/AppData/Local/JianyingPro/User Data/Cache/effect/643575/e4387517f584be39bb2e1ca4ede6cbe3/SourceHanSerifCN-Heavy.otf",
+    "font_size": 14,
+    "text_color": "#ffffff",
+    "text_color_random": false,
+    "text_color_options": [
+      "#FFFFFF",
+      "#ffe759",
+      "#00ff00",
+      "#00d4ff",
+      "#ff6699"
+    ],
+    "background_color": "#000000",
+    "background_alpha": 0.65,
+    "background_style": 1,
+    "position_y": -0.45,
+    "bold_width": 0.008,
+    "shadow_alpha": 0.678,
+    "shadow_distance": 5.0,
+    "shadow_smoothing": 2.088,
+    "stroke_width": 0.173,
+    "stroke_color": "#000000",
+    "border_width": 0.173,
+    "border_color": "#000000",
+    "line_max_width": 0.82,
+    "max_chars_per_line": 18,
+    "fonts": [
+      {
+        "category_id": "user",
+        "category_name": "最近使用",
+        "effect_id": "6807742980271641102",
+        "file_uri": "",
+        "id": "AF21325E-9F70-4d2c-B8FA-FD516D0F8C17",
+        "path": "C:/Users/jeffb/AppData/Local/JianyingPro/User Data/Cache/effect/643575/e4387517f584be39bb2e1ca4ede6cbe3/SourceHanSerifCN-Heavy.otf",
+        "request_id": "202512181513352CA309B81A6E2BF53DE1",
+        "resource_id": "6807742980271641102",
+        "source_platform": 0,
+        "team_id": "",
+        "title": "思源宋體"
+      }
+    ]
+  },
+  "title_style": {
+    "font_resource_id": "7265534770845585980",
+    "font_size": 5.0,
+    "border_width": 0.0365,
+    "border_color": "#666666",
+    "shadow_alpha": 0.9,
+    "background_alpha": 1.0,
+    "position_y": 0.8,
+    "random_bg_colors": [
+      "#ff0000",
+      "#00ff00",
+      "#0066ff",
+      "#ff6600",
+      "#9900ff",
+      "#00cccc",
+      "#ff3399"
+    ]
+  },
+  "input": {
+    "videos_folder": "videos/translate_raw"
+  },
+  "output": {
+    "template_name": "翻譯專案",
+    "output_prefix": "翻譯專案_",
+    "subtitle_folder": "subtitles"
+  },
+  "parallel": {
+    "enabled": true,
+    "max_workers": 2,
+    "mode": "pipeline",
+    "translate_workers": 4,
+    "draft_workers": 2,
+    "max_retries": 3,
+    "retry_delay": 1.0
+  },
+  "ig_caption": {
+    "examples": [
+      "這招有趣！不道德之超級佛心，\n直接幫商家建立一個很讚讚的網頁，\n到時候就可以出售了\n-\n各位前端工程師有人想試試這招嗎\n感覺還滿屌的\n還是一起來組一個戰隊\n-\n好多店家的網站真的又老又醜XD\n-\n#前端 #網頁 #工程師 #AI #wordpress #軟體 #軟體工程師 #vibecoding #創業 #一人公司 #超級個體 #賺錢 #商業 #商業思維"
+    ]
+  },
+  "benchmark": {
+    "default_iterations": 3,
+    "default_models": ["tiny", "base", "small"],
+    "default_compute_types": ["float16", "int8"],
+    "default_engines": ["faster-whisper", "openai-whisper"],
+    "output_folder": "benchmark_results",
+    "test_settings": {
+      "warmup_iterations": 1,
+      "cooldown_seconds": 2,
+      "measure_memory": true,
+      "measure_gpu_memory": true
+    },
+    "quick_test": {
+      "model": "tiny",
+      "compute_type": "int8",
+      "iterations": 1
+    },
+    "full_test": {
+      "models": ["tiny", "base", "small", "medium"],
+      "compute_types": ["float16", "int8", "int8_float16"],
+      "iterations": 5
+    }
+  }
+}

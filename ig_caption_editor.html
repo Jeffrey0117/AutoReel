@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>IG 文案產生器</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 40px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 { color: #E1306C; margin-bottom: 10px; }
+        .subtitle { color: #888; margin-bottom: 30px; }
+        .nav {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .nav a {
+            color: #00d4ff;
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 1px solid #00d4ff;
+            border-radius: 4px;
+        }
+        .nav a:hover { background: #00d4ff22; }
+        .section {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .section-title {
+            color: #E1306C;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #E1306C;
+        }
+        .example-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .example-item {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            position: relative;
+        }
+        .example-item pre {
+            white-space: pre-wrap;
+            margin: 0;
+            font-family: inherit;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #ccc;
+        }
+        .example-item .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff4444;
+            border: none;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .example-item .delete-btn:hover { background: #ff6666; }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background: #E1306C;
+            color: white;
+        }
+        .btn-primary:hover { background: #c13584; }
+        .btn-secondary {
+            background: #0f3460;
+            color: white;
+        }
+        .btn-secondary:hover { background: #1a508b; }
+        .btn-success {
+            background: #00d4ff;
+            color: #000;
+        }
+        .btn-success:hover { background: #00a8cc; }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .status.success { background: #1b4332; color: #95d5b2; }
+        .status.error { background: #4a1515; color: #f8d7da; }
+        .output-section {
+            margin-top: 30px;
+        }
+        .output-box {
+            background: #0d1117;
+            border: 2px solid #E1306C;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 200px;
+        }
+        .output-box pre {
+            white-space: pre-wrap;
+            margin: 0;
+            font-family: inherit;
+            line-height: 1.6;
+        }
+        .copy-btn {
+            margin-top: 10px;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            background: #1a1a2e;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .generated-list {
+            margin-top: 20px;
+        }
+        .generated-item {
+            background: #1a1a2e;
+            border: 1px solid #E1306C44;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        .generated-item .video-name {
+            color: #E1306C;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .generated-item pre {
+            white-space: pre-wrap;
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .generated-item .file-path {
+            margin-top: 10px;
+            padding: 8px;
+            background: #0d1117;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #888;
+            word-break: break-all;
+            cursor: pointer;
+        }
+        .generated-item .file-path:hover {
+            color: #00d4ff;
+        }
+        .hint {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>IG 文案產生器</h1>
+    <p class="subtitle">AI 學習你的風格，自動生成影片文案</p>
+
+    <div class="nav">
+        <a href="/">字幕位置調整</a>
+        <a href="/editor">字幕批量取代</a>
+        <a href="/ig-caption" style="background: #E1306C22;">IG 文案</a>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <span>1. 你的文案風格範例</span>
+        </div>
+        <p class="hint">貼上你過去寫的 IG 文案，AI 會學習你的語氣和風格</p>
+
+        <div class="example-list" id="exampleList">
+            <!-- 動態載入 -->
+        </div>
+
+        <div style="margin-top: 20px;">
+            <textarea id="newExample" placeholder="貼上你的 IG 文案範例...&#10;&#10;例如：&#10;這招有趣！不道德之超級佛心，&#10;直接幫商家建立一個很讚讚的網頁，&#10;到時候就可以出售了&#10;-&#10;各位前端工程師有人想試試這招嗎&#10;-&#10;#前端 #網頁 #工程師"></textarea>
+            <div class="btn-row">
+                <button class="btn btn-primary" onclick="addExample()">新增範例</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <span>2. 生成文案</span>
+        </div>
+        <p class="hint">選擇草稿生成文案，或一次生成全部</p>
+
+        <select id="draftSelect">
+            <option value="">-- 選擇草稿 --</option>
+        </select>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="regenerateCaption()">生成選擇的草稿</button>
+            <button class="btn btn-primary" onclick="generateAll()">全部生成</button>
+        </div>
+
+        <div class="generated-list" id="generatedList">
+            <!-- 動態載入 -->
+        </div>
+    </div>
+
+    <div id="status"></div>
+
+    <script>
+        const exampleList = document.getElementById('exampleList');
+        const generatedList = document.getElementById('generatedList');
+        const draftSelect = document.getElementById('draftSelect');
+        const statusDiv = document.getElementById('status');
+
+        // 載入範例
+        function loadExamples() {
+            fetch('/api/ig-examples')
+                .then(r => r.json())
+                .then(data => {
+                    exampleList.innerHTML = '';
+                    const examples = data.examples || [];
+                    if (examples.length === 0) {
+                        exampleList.innerHTML = '<p style="color: #666;">尚無範例，請新增你的文案風格</p>';
+                        return;
+                    }
+                    examples.forEach((ex, i) => {
+                        const div = document.createElement('div');
+                        div.className = 'example-item';
+                        div.innerHTML = `
+                            <button class="delete-btn" onclick="deleteExample(${i})">×</button>
+                            <pre>${escapeHtml(ex)}</pre>
+                        `;
+                        exampleList.appendChild(div);
+                    });
+                })
+                .catch(err => {
+                    exampleList.innerHTML = '<p style="color: #ff6666;">載入失敗</p>';
+                });
+        }
+
+        // 新增範例
+        function addExample() {
+            const text = document.getElementById('newExample').value.trim();
+            if (!text) {
+                showStatus('請輸入文案內容', 'error');
+                return;
+            }
+
+            fetch('/api/ig-examples', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'add', text: text })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('newExample').value = '';
+                    loadExamples();
+                    showStatus('已新增範例', 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            })
+            .catch(err => showStatus('新增失敗: ' + err.message, 'error'));
+        }
+
+        // 刪除範例
+        function deleteExample(index) {
+            if (!confirm('確定要刪除這個範例嗎？')) return;
+
+            fetch('/api/ig-examples', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete', index: index })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    loadExamples();
+                    showStatus('已刪除', 'success');
+                }
+            })
+            .catch(err => showStatus('刪除失敗', 'error'));
+        }
+
+        // 載入草稿列表
+        function loadDrafts() {
+            fetch('/api/drafts')
+                .then(r => r.json())
+                .then(data => {
+                    draftSelect.innerHTML = '<option value="">-- 選擇草稿重新生成 --</option>';
+                    (data.drafts || []).forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        opt.textContent = name;
+                        draftSelect.appendChild(opt);
+                    });
+                });
+        }
+
+        // 載入已生成的文案
+        function loadGeneratedCaptions() {
+            fetch('/api/ig-captions')
+                .then(r => r.json())
+                .then(data => {
+                    generatedList.innerHTML = '';
+                    const captions = data.captions || [];
+                    if (captions.length === 0) {
+                        generatedList.innerHTML = '<p style="color: #666;">尚無生成的文案</p>';
+                        return;
+                    }
+                    captions.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'generated-item';
+                        const filePath = item.file_path || '';
+                        div.innerHTML = `
+                            <div class="video-name">${escapeHtml(item.video_name || '')}</div>
+                            <pre>${escapeHtml(item.caption || '')}</pre>
+                            <button class="btn btn-secondary copy-btn" onclick="copyToClipboard(this, '${escapeJs(item.caption)}')">複製文案</button>
+                            ${filePath ? `<div class="file-path" onclick="copyToClipboard(this, '${escapeJs(filePath)}')" title="點擊複製路徑">${escapeHtml(filePath)}</div>` : ''}
+                        `;
+                        generatedList.appendChild(div);
+                    });
+                })
+                .catch(err => {
+                    console.error('載入文案失敗:', err);
+                    generatedList.innerHTML = '<p style="color: #ff6666;">載入失敗: ' + err.message + '</p>';
+                });
+        }
+
+        // 重新生成文案
+        function regenerateCaption() {
+            const draftName = draftSelect.value;
+            if (!draftName) {
+                showStatus('請選擇草稿', 'error');
+                return;
+            }
+
+            showStatus('生成中...', 'success');
+
+            fetch('/api/ig-generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ draft_name: draftName })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    loadGeneratedCaptions();
+                    showStatus('生成完成！', 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            })
+            .catch(err => showStatus('生成失敗: ' + err.message, 'error'));
+        }
+
+        // 全部生成
+        async function generateAll() {
+            const options = Array.from(draftSelect.options).filter(o => o.value);
+            if (options.length === 0) {
+                showStatus('沒有可用的草稿', 'error');
+                return;
+            }
+
+            if (!confirm(`確定要為 ${options.length} 個草稿生成文案嗎？\n這可能需要一些時間。`)) {
+                return;
+            }
+
+            showStatus(`開始生成 0/${options.length}...`, 'success');
+
+            let completed = 0;
+            let failed = 0;
+
+            for (const option of options) {
+                try {
+                    const response = await fetch('/api/ig-generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ draft_name: option.value })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        completed++;
+                    } else {
+                        failed++;
+                    }
+                } catch (e) {
+                    failed++;
+                }
+                showStatus(`生成中 ${completed + failed}/${options.length}...`, 'success');
+            }
+
+            loadGeneratedCaptions();
+            if (failed === 0) {
+                showStatus(`全部完成！成功生成 ${completed} 個文案`, 'success');
+            } else {
+                showStatus(`完成！成功 ${completed} 個，失敗 ${failed} 個`, 'error');
+            }
+        }
+
+        // 複製到剪貼簿
+        function copyToClipboard(btn, text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const original = btn.textContent;
+                btn.textContent = '已複製！';
+                setTimeout(() => btn.textContent = original, 2000);
+            });
+        }
+
+        function showStatus(msg, type) {
+            statusDiv.className = 'status ' + type;
+            statusDiv.textContent = msg;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function escapeJs(text) {
+            if (!text) return '';
+            return text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+        }
+
+        // 初始載入
+        loadExamples();
+        loadDrafts();
+        loadGeneratedCaptions();
+    </script>
+</body>
+</html>

@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>字幕位置調整</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 40px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 { color: #00d4ff; margin-bottom: 30px; }
+        .preview {
+            background: #000;
+            width: 100%;
+            height: 300px;
+            position: relative;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .preview-video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+            font-size: 14px;
+        }
+        .subtitle-preview {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 16px;
+            white-space: nowrap;
+            border: 2px solid #000;
+            text-shadow: 1px 1px 2px #000;
+        }
+        .control-group {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: #aaa;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        .value-display {
+            text-align: center;
+            font-size: 24px;
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
+        .presets {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .preset-btn {
+            padding: 8px 16px;
+            background: #0f3460;
+            border: none;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .preset-btn:hover { background: #1a508b; }
+        .save-btn {
+            width: 100%;
+            padding: 15px;
+            background: #00d4ff;
+            border: none;
+            color: #000;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .save-btn:hover { background: #00a8cc; }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .status.success { background: #1b4332; color: #95d5b2; }
+        .status.error { background: #4a1515; color: #f8d7da; }
+        .nav {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .nav a {
+            color: #00d4ff;
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 1px solid #00d4ff;
+            border-radius: 4px;
+        }
+        .nav a:hover { background: #00d4ff22; }
+        .nav a.active { background: #00d4ff; color: #000; }
+    </style>
+</head>
+<body>
+    <h1>字幕位置調整</h1>
+
+    <div class="nav">
+        <a href="/" class="active">字幕位置</a>
+        <a href="/editor">批量取代</a>
+        <a href="/ig-caption">IG 文案</a>
+    </div>
+
+    <div class="preview">
+        <div class="preview-video">影片預覽區</div>
+        <div class="subtitle-preview" id="subtitlePreview">這是字幕預覽文字</div>
+    </div>
+
+    <div class="control-group">
+        <label>字幕垂直位置 (position_y)</label>
+        <div class="value-display" id="valueDisplay">-0.45</div>
+        <input type="range" id="positionSlider" min="-0.9" max="0.5" step="0.05" value="-0.45">
+        <div class="presets">
+            <button class="preset-btn" onclick="setPosition(-0.8)">很下 (-0.8)</button>
+            <button class="preset-btn" onclick="setPosition(-0.6)">下方 (-0.6)</button>
+            <button class="preset-btn" onclick="setPosition(-0.45)">中下 (-0.45)</button>
+            <button class="preset-btn" onclick="setPosition(-0.2)">中間 (-0.2)</button>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label>字號 (font_size)</label>
+        <div class="value-display" id="fontSizeDisplay">8</div>
+        <input type="range" id="fontSizeSlider" min="5" max="25" step="0.5" value="8">
+        <div class="presets">
+            <button class="preset-btn" onclick="setFontSize(8)">小 (8)</button>
+            <button class="preset-btn" onclick="setFontSize(12)">中 (12)</button>
+            <button class="preset-btn" onclick="setFontSize(16)">大 (16)</button>
+            <button class="preset-btn" onclick="setFontSize(20)">特大 (20)</button>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label>字幕最大寬度 (line_max_width) - 1.0 = 全螢幕寬</label>
+        <div class="value-display" id="widthDisplay">0.82</div>
+        <input type="range" id="widthSlider" min="0.5" max="1.0" step="0.02" value="0.82">
+        <div class="presets">
+            <button class="preset-btn" onclick="setWidth(0.7)">窄 (0.7)</button>
+            <button class="preset-btn" onclick="setWidth(0.82)">標準 (0.82)</button>
+            <button class="preset-btn" onclick="setWidth(0.92)">寬 (0.92)</button>
+            <button class="preset-btn" onclick="setWidth(1.0)">全寬 (1.0)</button>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label>背景透明度 (0 = 無背景, 1 = 不透明)</label>
+        <div class="value-display" id="bgAlphaDisplay">0.64</div>
+        <input type="range" id="bgAlphaSlider" min="0" max="1" step="0.05" value="0.64">
+        <div class="presets">
+            <button class="preset-btn" onclick="setBgAlpha(0)">無背景</button>
+            <button class="preset-btn" onclick="setBgAlpha(0.4)">淡 (0.4)</button>
+            <button class="preset-btn" onclick="setBgAlpha(0.64)">標準 (0.64)</button>
+            <button class="preset-btn" onclick="setBgAlpha(0.8)">深 (0.8)</button>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label>文字顏色</label>
+        <div class="color-row" style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
+            <input type="color" id="textColorPicker" value="#FFFFFF" style="width: 60px; height: 40px; border: none; cursor: pointer;">
+            <span id="textColorDisplay" style="font-size: 18px; color: #00d4ff;">#FFFFFF</span>
+            <label style="display: flex; align-items: center; gap: 5px; margin: 0;">
+                <input type="checkbox" id="randomColorCheck"> 隨機顏色
+            </label>
+        </div>
+        <div class="presets">
+            <button class="preset-btn" onclick="setTextColor('#FFFFFF')" style="background: #333; color: #FFFFFF;">白色</button>
+            <button class="preset-btn" onclick="setTextColor('#ffe759')" style="background: #333; color: #ffe759;">黃色</button>
+            <button class="preset-btn" onclick="setTextColor('#00ff00')" style="background: #333; color: #00ff00;">綠色</button>
+            <button class="preset-btn" onclick="setTextColor('#00d4ff')" style="background: #333; color: #00d4ff;">藍色</button>
+            <button class="preset-btn" onclick="setTextColor('#ff6699')" style="background: #333; color: #ff6699;">粉色</button>
+        </div>
+    </div>
+
+    <button class="save-btn" onclick="saveConfig()">儲存設定（未來草稿用）</button>
+
+    <div class="control-group" style="margin-top: 20px;">
+        <label>直接更新現有草稿</label>
+        <select id="draftSelect" style="width: 100%; padding: 10px; margin-bottom: 10px; font-size: 14px; background: #1a1a2e; color: #fff; border: 1px solid #444;">
+            <option value="">-- 載入中... --</option>
+        </select>
+        <button class="preset-btn" onclick="loadDrafts()" style="margin-bottom: 10px;">重新載入草稿列表</button>
+        <button class="save-btn" style="background: #ff6600;" onclick="updateDraft()">
+            套用位置到選擇的草稿
+        </button>
+    </div>
+
+    <div id="status"></div>
+
+    <script>
+        const slider = document.getElementById('positionSlider');
+        const valueDisplay = document.getElementById('valueDisplay');
+        const fontSizeSlider = document.getElementById('fontSizeSlider');
+        const fontSizeDisplay = document.getElementById('fontSizeDisplay');
+        const widthSlider = document.getElementById('widthSlider');
+        const widthDisplay = document.getElementById('widthDisplay');
+        const bgAlphaSlider = document.getElementById('bgAlphaSlider');
+        const bgAlphaDisplay = document.getElementById('bgAlphaDisplay');
+        const textColorPicker = document.getElementById('textColorPicker');
+        const textColorDisplay = document.getElementById('textColorDisplay');
+        const randomColorCheck = document.getElementById('randomColorCheck');
+        const subtitlePreview = document.getElementById('subtitlePreview');
+        const statusDiv = document.getElementById('status');
+        const draftSelect = document.getElementById('draftSelect');
+
+        // 載入現有設定
+        fetch('/api/config')
+            .then(r => r.json())
+            .then(data => {
+                const style = data.config?.subtitle_style ?? {};
+                slider.value = style.position_y ?? -0.45;
+                fontSizeSlider.value = style.font_size ?? 8;
+                widthSlider.value = style.line_max_width ?? 0.82;
+                bgAlphaSlider.value = style.background_alpha ?? 0.64;
+                textColorPicker.value = style.text_color ?? '#FFFFFF';
+                randomColorCheck.checked = style.text_color_random ?? false;
+                updatePreview();
+            })
+            .catch(() => {});
+
+        // 載入草稿列表
+        function loadDrafts() {
+            draftSelect.innerHTML = '<option value="">-- 載入中... --</option>';
+            fetch('/api/drafts')
+                .then(r => r.json())
+                .then(data => {
+                    draftSelect.innerHTML = '<option value="">-- 選擇草稿 --</option>';
+                    if (data.drafts && data.drafts.length > 0) {
+                        data.drafts.forEach(name => {
+                            const opt = document.createElement('option');
+                            opt.value = name;
+                            opt.textContent = name;
+                            draftSelect.appendChild(opt);
+                        });
+                        statusDiv.className = 'status success';
+                        statusDiv.textContent = '找到 ' + data.drafts.length + ' 個草稿';
+                    } else {
+                        statusDiv.className = 'status error';
+                        statusDiv.textContent = '沒有找到翻譯專案草稿';
+                    }
+                })
+                .catch(err => {
+                    draftSelect.innerHTML = '<option value="">-- 載入失敗 --</option>';
+                    statusDiv.className = 'status error';
+                    statusDiv.textContent = '載入草稿失敗: ' + err.message;
+                });
+        }
+        loadDrafts();
+
+        slider.addEventListener('input', () => updatePreview());
+        fontSizeSlider.addEventListener('input', () => updatePreview());
+        widthSlider.addEventListener('input', () => updatePreview());
+        bgAlphaSlider.addEventListener('input', () => updatePreview());
+        textColorPicker.addEventListener('input', () => updatePreview());
+
+        function updatePreview() {
+            const pos = parseFloat(slider.value);
+            const fontSize = parseFloat(fontSizeSlider.value);
+            const width = parseFloat(widthSlider.value);
+            const bgAlpha = parseFloat(bgAlphaSlider.value);
+            const textColor = textColorPicker.value;
+
+            valueDisplay.textContent = pos.toFixed(2);
+            fontSizeDisplay.textContent = fontSize.toFixed(1);
+            widthDisplay.textContent = width.toFixed(2);
+            bgAlphaDisplay.textContent = bgAlpha.toFixed(2);
+            textColorDisplay.textContent = textColor;
+
+            // 預覽位置
+            const percent = ((1 - pos) / 2) * 100;
+            subtitlePreview.style.top = percent + '%';
+            subtitlePreview.style.transform = 'translate(-50%, -50%)';
+            // 預覽字號
+            subtitlePreview.style.fontSize = (fontSize * 2) + 'px';
+            // 預覽寬度
+            subtitlePreview.style.maxWidth = (width * 100) + '%';
+            // 預覽背景
+            subtitlePreview.style.background = `rgba(0,0,0,${bgAlpha})`;
+            // 預覽文字顏色
+            subtitlePreview.style.color = textColor;
+        }
+
+        function setPosition(value) {
+            slider.value = value;
+            updatePreview();
+        }
+
+        function setFontSize(value) {
+            fontSizeSlider.value = value;
+            updatePreview();
+        }
+
+        function setWidth(value) {
+            widthSlider.value = value;
+            updatePreview();
+        }
+
+        function setBgAlpha(value) {
+            bgAlphaSlider.value = value;
+            updatePreview();
+        }
+
+        function setTextColor(value) {
+            textColorPicker.value = value;
+            updatePreview();
+        }
+
+        function saveConfig() {
+            const position = parseFloat(slider.value);
+            const fontSize = parseFloat(fontSizeSlider.value);
+            const width = parseFloat(widthSlider.value);
+            const bgAlpha = parseFloat(bgAlphaSlider.value);
+            const textColor = textColorPicker.value;
+            const randomColor = randomColorCheck.checked;
+
+            fetch('/api/position', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    position_y: position,
+                    font_size: fontSize,
+                    line_max_width: width,
+                    background_alpha: bgAlpha,
+                    text_color: textColor,
+                    text_color_random: randomColor
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    statusDiv.className = 'status success';
+                    statusDiv.textContent = `已儲存！位置=${position}, 字號=${fontSize}, 顏色=${textColor}${randomColor ? '(隨機)' : ''}`;
+                } else {
+                    throw new Error(data.error);
+                }
+            })
+            .catch(err => {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '儲存失敗: ' + err.message;
+            });
+        }
+
+        function updateDraft() {
+            const draftName = draftSelect.value;
+            if (!draftName) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '請先選擇草稿';
+                return;
+            }
+
+            const position = parseFloat(slider.value);
+            const fontSize = parseFloat(fontSizeSlider.value);
+            const width = parseFloat(widthSlider.value);
+            const bgAlpha = parseFloat(bgAlphaSlider.value);
+            const textColor = textColorPicker.value;
+            const randomColor = randomColorCheck.checked;
+
+            fetch('/api/update-draft', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    draft_name: draftName,
+                    position_y: position,
+                    font_size: fontSize,
+                    line_max_width: width,
+                    background_alpha: bgAlpha,
+                    text_color: textColor,
+                    text_color_random: randomColor
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    statusDiv.className = 'status success';
+                    const skippedInfo = data.skipped ? `（跳過 ${data.skipped} 個標題/html_cat）` : '';
+                    statusDiv.textContent = `已更新 ${data.updated} 個字幕${skippedInfo}！請在剪映重新開啟草稿`;
+                } else {
+                    throw new Error(data.error);
+                }
+            })
+            .catch(err => {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '更新失敗: ' + err.message;
+            });
+        }
+    </script>
+</body>
+</html>

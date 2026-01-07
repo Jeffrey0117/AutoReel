@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Translate - Reels 翻譯工作流程</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+        }
+
+        .subtitle {
+            font-size: 1.3rem;
+            color: #a0aec0;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* 流程圖 */
+        .workflow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 60px;
+        }
+
+        .step {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            width: 220px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .step:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .step-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            color: #fff;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            line-height: 30px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .step h3 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .step p {
+            font-size: 0.85rem;
+            color: #a0aec0;
+            line-height: 1.5;
+        }
+
+        .arrow {
+            font-size: 2rem;
+            color: #00d4ff;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* 功能區塊 */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 60px;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .feature-card h3 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            color: #00d4ff;
+        }
+
+        .feature-card p {
+            color: #a0aec0;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* 使用說明 */
+        .usage {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 40px;
+        }
+
+        .usage h2 {
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            color: #00d4ff;
+        }
+
+        .usage-steps {
+            display: grid;
+            gap: 20px;
+        }
+
+        .usage-step {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .usage-step-num {
+            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .usage-step-content h4 {
+            font-size: 1.1rem;
+            margin-bottom: 6px;
+        }
+
+        .usage-step-content p {
+            color: #a0aec0;
+            font-size: 0.95rem;
+        }
+
+        .usage-step-content code {
+            background: rgba(0, 212, 255, 0.15);
+            color: #00d4ff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9rem;
+        }
+
+        /* 工具連結 */
+        .tools {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tool-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            color: #fff;
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .tool-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
+        }
+
+        .tool-btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .tool-btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* RWD */
+        @media (max-width: 768px) {
+            h1 { font-size: 2rem; }
+            .subtitle { font-size: 1rem; }
+            .workflow { flex-direction: column; }
+            .arrow { transform: rotate(90deg); }
+            .step { width: 100%; max-width: 300px; }
+            .usage { padding: 25px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Video Translate</h1>
+            <p class="subtitle">Reels 自動翻譯工作流程<br>下載 → 翻譯 → 排程上傳，一條龍搞定</p>
+        </header>
+
+        <!-- 工作流程 -->
+        <div class="workflow">
+            <div class="step">
+                <div class="step-icon">📥</div>
+                <div class="step-number">1</div>
+                <h3>下載 Reels</h3>
+                <p>從 IG 批量下載英文 Reels 影片</p>
+            </div>
+
+            <div class="arrow">→</div>
+
+            <div class="step">
+                <div class="step-icon">🎯</div>
+                <div class="step-number">2</div>
+                <h3>丟入系統</h3>
+                <p>放到 videos/translate_raw 資料夾</p>
+            </div>
+
+            <div class="arrow">→</div>
+
+            <div class="step">
+                <div class="step-icon">🤖</div>
+                <div class="step-number">3</div>
+                <h3>自動處理</h3>
+                <p>Whisper 語音識別 + DeepSeek 翻譯</p>
+            </div>
+
+            <div class="arrow">→</div>
+
+            <div class="step">
+                <div class="step-icon">🎬</div>
+                <div class="step-number">4</div>
+                <h3>剪映輸出</h3>
+                <p>自動生成剪映草稿，加上中文字幕</p>
+            </div>
+
+            <div class="arrow">→</div>
+
+            <div class="step">
+                <div class="step-icon">📅</div>
+                <div class="step-number">5</div>
+                <h3>Buffer 排程</h3>
+                <p>輸出影片後用 Buffer 排程上傳</p>
+            </div>
+        </div>
+
+        <!-- 功能特色 -->
+        <div class="features">
+            <div class="feature-card">
+                <h3>⚡ GPU 加速</h3>
+                <p>使用 faster-whisper + CUDA，語音識別速度提升 4-8 倍，處理一分鐘影片只需幾秒鐘。</p>
+            </div>
+            <div class="feature-card">
+                <h3>🌐 智能翻譯</h3>
+                <p>整合 DeepSeek API，英翻中品質優秀，支援批量處理，上下文理解佳。</p>
+            </div>
+            <div class="feature-card">
+                <h3>🎨 自動字幕</h3>
+                <p>自動套用字幕樣式：字體、顏色、描邊、陰影，直接輸出剪映可用的草稿。</p>
+            </div>
+            <div class="feature-card">
+                <h3>📝 IG 文案</h3>
+                <p>自動生成 Instagram 貼文文案，包含 hashtag，省去手動撰寫的時間。</p>
+            </div>
+            <div class="feature-card">
+                <h3>🔄 Pipeline 模式</h3>
+                <p>多影片並行處理，邊轉錄邊翻譯，充分利用 GPU 和 CPU 資源。</p>
+            </div>
+            <div class="feature-card">
+                <h3>🛠️ Web 編輯器</h3>
+                <p>網頁介面調整字幕位置、編輯翻譯內容，即時預覽效果。</p>
+            </div>
+        </div>
+
+        <!-- 使用說明 -->
+        <div class="usage">
+            <h2>使用方式</h2>
+            <div class="usage-steps">
+                <div class="usage-step">
+                    <div class="usage-step-num">1</div>
+                    <div class="usage-step-content">
+                        <h4>下載 Reels</h4>
+                        <p>用下載工具（如 4K Stogram、IG 下載器）批量下載想翻譯的英文 Reels</p>
+                    </div>
+                </div>
+                <div class="usage-step">
+                    <div class="usage-step-num">2</div>
+                    <div class="usage-step-content">
+                        <h4>放入資料夾</h4>
+                        <p>把影片丟到 <code>videos/translate_raw/</code> 資料夾</p>
+                    </div>
+                </div>
+                <div class="usage-step">
+                    <div class="usage-step-num">3</div>
+                    <div class="usage-step-content">
+                        <h4>執行翻譯</h4>
+                        <p>雙擊 <code>translate.bat</code> 或執行 <code>python translate_video.py --batch --pipeline</code></p>
+                    </div>
+                </div>
+                <div class="usage-step">
+                    <div class="usage-step-num">4</div>
+                    <div class="usage-step-content">
+                        <h4>剪映編輯</h4>
+                        <p>打開剪映，草稿列表會出現翻譯好的專案，微調後輸出影片</p>
+                    </div>
+                </div>
+                <div class="usage-step">
+                    <div class="usage-step-num">5</div>
+                    <div class="usage-step-content">
+                        <h4>Buffer 排程</h4>
+                        <p>上傳到 Buffer，設定排程時間，自動發布到 IG/TikTok</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 工具按鈕 -->
+        <div class="tools">
+            <a href="subtitle_position_editor.html" class="tool-btn">
+                📍 字幕位置編輯器
+            </a>
+            <a href="ig_caption_editor.html" class="tool-btn secondary">
+                📝 IG 文案編輯器
+            </a>
+            <a href="subtitle_editor.html" class="tool-btn secondary">
+                ✏️ 字幕內容編輯器
+            </a>
+        </div>
+
+        <footer>
+            <p>Video Translate Project - Reels 翻譯自動化工作流程</p>
+        </footer>
+    </div>
+</body>
+</html>

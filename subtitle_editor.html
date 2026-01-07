@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>字幕批量取代</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 40px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 { color: #00d4ff; margin-bottom: 30px; }
+        .control-group {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+            font-size: 14px;
+        }
+        select, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            background: #1a1a2e;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+        .subtitle-list {
+            background: #0f0f23;
+            border: 1px solid #333;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+        .subtitle-item {
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            background: #16213e;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .subtitle-item.highlight {
+            background: #3d2a00;
+            border: 1px solid #ffa500;
+        }
+        .subtitle-item .match {
+            background: #ff6600;
+            color: #fff;
+            padding: 2px 4px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+        .subtitle-item .index {
+            color: #666;
+            font-size: 12px;
+            margin-right: 8px;
+        }
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-preview {
+            background: #0f3460;
+            color: #fff;
+        }
+        .btn-preview:hover { background: #1a508b; }
+        .btn-replace {
+            background: #00d4ff;
+            color: #000;
+        }
+        .btn-replace:hover { background: #00a8cc; }
+        .btn-load {
+            background: #444;
+            color: #fff;
+        }
+        .btn-load:hover { background: #555; }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 12px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .status.success { background: #1b4332; color: #95d5b2; }
+        .status.error { background: #4a1515; color: #f8d7da; }
+        .status.info { background: #0f3460; color: #00d4ff; }
+        .stats {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .stat-item {
+            background: #0f3460;
+            padding: 10px 15px;
+            border-radius: 4px;
+            color: #00d4ff;
+            font-size: 14px;
+        }
+        .stat-item strong {
+            color: #fff;
+            font-size: 18px;
+            margin-left: 5px;
+        }
+        .empty-state {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+            font-size: 14px;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f0f23;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .nav {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .nav a {
+            color: #00d4ff;
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 1px solid #00d4ff;
+            border-radius: 4px;
+        }
+        .nav a:hover { background: #00d4ff22; }
+        .nav a.active { background: #00d4ff; color: #000; }
+    </style>
+</head>
+<body>
+    <h1>字幕批量取代</h1>
+
+    <div class="nav">
+        <a href="/">字幕位置</a>
+        <a href="/editor" class="active">批量取代</a>
+        <a href="/ig-caption">IG 文案</a>
+    </div>
+
+    <div class="control-group">
+        <label>選擇草稿</label>
+        <select id="draftSelect">
+            <option value="">-- 載入中... --</option>
+        </select>
+        <button class="btn btn-load" onclick="loadDrafts()">重新載入草稿列表</button>
+    </div>
+
+    <div class="control-group">
+        <label>尋找文字</label>
+        <input type="text" id="findInput" placeholder="輸入要尋找的文字...">
+
+        <label>取代為</label>
+        <input type="text" id="replaceInput" placeholder="輸入取代後的文字...">
+
+        <div class="button-row">
+            <button class="btn btn-preview" onclick="previewReplace()">預覽取代</button>
+            <button class="btn btn-replace" onclick="executeReplace()">全部取代</button>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label>字幕列表</label>
+        <div class="stats" id="stats" style="display: none;">
+            <div class="stat-item">
+                總計: <strong id="totalCount">0</strong>
+            </div>
+            <div class="stat-item">
+                符合: <strong id="matchCount">0</strong>
+            </div>
+        </div>
+        <div class="subtitle-list" id="subtitleList">
+            <div class="empty-state">請選擇草稿並載入字幕</div>
+        </div>
+    </div>
+
+    <div id="status"></div>
+
+    <script>
+        const draftSelect = document.getElementById('draftSelect');
+        const findInput = document.getElementById('findInput');
+        const replaceInput = document.getElementById('replaceInput');
+        const subtitleList = document.getElementById('subtitleList');
+        const statusDiv = document.getElementById('status');
+        const statsDiv = document.getElementById('stats');
+        const totalCountSpan = document.getElementById('totalCount');
+        const matchCountSpan = document.getElementById('matchCount');
+
+        let currentSubtitles = [];
+        let currentDraft = '';
+
+        // 載入草稿列表
+        function loadDrafts() {
+            draftSelect.innerHTML = '<option value="">-- 載入中... --</option>';
+            fetch('/api/drafts')
+                .then(r => r.json())
+                .then(data => {
+                    draftSelect.innerHTML = '<option value="">-- 選擇草稿 --</option>';
+                    if (data.drafts && data.drafts.length > 0) {
+                        data.drafts.forEach(name => {
+                            const opt = document.createElement('option');
+                            opt.value = name;
+                            opt.textContent = name;
+                            draftSelect.appendChild(opt);
+                        });
+                        showStatus('找到 ' + data.drafts.length + ' 個草稿', 'success');
+                    } else {
+                        showStatus('沒有找到翻譯專案草稿', 'error');
+                    }
+                })
+                .catch(err => {
+                    draftSelect.innerHTML = '<option value="">-- 載入失敗 --</option>';
+                    showStatus('載入草稿失敗: ' + err.message, 'error');
+                });
+        }
+
+        // 當選擇草稿時載入字幕
+        draftSelect.addEventListener('change', () => {
+            const draftName = draftSelect.value;
+            if (!draftName) {
+                currentSubtitles = [];
+                currentDraft = '';
+                renderSubtitles();
+                return;
+            }
+
+            currentDraft = draftName;
+            loadSubtitles(draftName);
+        });
+
+        // 載入字幕
+        function loadSubtitles(draftName) {
+            showStatus('載入字幕中...', 'info');
+            subtitleList.innerHTML = '<div class="empty-state">載入中...</div>';
+
+            fetch(`/api/subtitles?draft=${encodeURIComponent(draftName)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    currentSubtitles = data.subtitles || [];
+                    renderSubtitles();
+                    showStatus(`成功載入 ${currentSubtitles.length} 條字幕`, 'success');
+                })
+                .catch(err => {
+                    currentSubtitles = [];
+                    renderSubtitles();
+                    showStatus('載入字幕失敗: ' + err.message, 'error');
+                });
+        }
+
+        // 渲染字幕列表
+        function renderSubtitles(highlightText = null) {
+            if (currentSubtitles.length === 0) {
+                subtitleList.innerHTML = '<div class="empty-state">無字幕資料</div>';
+                statsDiv.style.display = 'none';
+                return;
+            }
+
+            let matchCount = 0;
+            let html = '';
+
+            currentSubtitles.forEach((text, index) => {
+                const hasMatch = highlightText && text.includes(highlightText);
+                if (hasMatch) matchCount++;
+
+                let displayText = text;
+                if (highlightText && hasMatch) {
+                    // 將尋找的文字高亮
+                    const regex = new RegExp(escapeRegex(highlightText), 'g');
+                    displayText = text.replace(regex, '<span class="match">$&</span>');
+                }
+
+                const itemClass = hasMatch ? 'subtitle-item highlight' : 'subtitle-item';
+                html += `<div class="${itemClass}"><span class="index">#${index + 1}</span>${displayText}</div>`;
+            });
+
+            subtitleList.innerHTML = html;
+
+            // 更新統計
+            statsDiv.style.display = 'flex';
+            totalCountSpan.textContent = currentSubtitles.length;
+            matchCountSpan.textContent = matchCount;
+        }
+
+        // 預覽取代
+        function previewReplace() {
+            const findText = findInput.value;
+
+            if (!currentDraft) {
+                showStatus('請先選擇草稿', 'error');
+                return;
+            }
+
+            if (!findText) {
+                showStatus('請輸入要尋找的文字', 'error');
+                return;
+            }
+
+            renderSubtitles(findText);
+
+            const matchCount = currentSubtitles.filter(text => text.includes(findText)).length;
+            if (matchCount > 0) {
+                showStatus(`找到 ${matchCount} 條符合的字幕`, 'info');
+            } else {
+                showStatus('沒有找到符合的字幕', 'info');
+            }
+        }
+
+        // 執行取代
+        function executeReplace() {
+            const findText = findInput.value;
+            const replaceText = replaceInput.value;
+
+            if (!currentDraft) {
+                showStatus('請先選擇草稿', 'error');
+                return;
+            }
+
+            if (!findText) {
+                showStatus('請輸入要尋找的文字', 'error');
+                return;
+            }
+
+            if (replaceText === undefined || replaceText === null) {
+                showStatus('請輸入取代文字（可為空白）', 'error');
+                return;
+            }
+
+            // 確認
+            const matchCount = currentSubtitles.filter(text => text.includes(findText)).length;
+            if (matchCount === 0) {
+                showStatus('沒有找到符合的字幕，無需取代', 'info');
+                return;
+            }
+
+            if (!confirm(`確定要取代 ${matchCount} 條字幕中的「${findText}」為「${replaceText}」嗎？`)) {
+                return;
+            }
+
+            showStatus('正在取代...', 'info');
+
+            fetch('/api/subtitles/replace', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    draft_name: currentDraft,
+                    find: findText,
+                    replace: replaceText
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                showStatus(`成功取代 ${data.replaced} 條字幕！請在剪映重新開啟草稿`, 'success');
+                // 重新載入字幕
+                loadSubtitles(currentDraft);
+                // 清空輸入框
+                findInput.value = '';
+                replaceInput.value = '';
+            })
+            .catch(err => {
+                showStatus('取代失敗: ' + err.message, 'error');
+            });
+        }
+
+        // 顯示狀態訊息
+        function showStatus(message, type) {
+            statusDiv.className = 'status ' + type;
+            statusDiv.textContent = message;
+        }
+
+        // 轉義正則特殊字元
+        function escapeRegex(str) {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        // 初始載入
+        loadDrafts();
+    </script>
+</body>
+</html>
