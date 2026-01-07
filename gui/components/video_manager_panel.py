@@ -468,17 +468,19 @@ class VideoManagerPanel(ctk.CTkFrame):
         # 播放控制
         control_frame = ctk.CTkFrame(preview_frame, fg_color="transparent")
         control_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
-        control_frame.grid_columnconfigure(1, weight=1)
+        control_frame.grid_columnconfigure(0, weight=1)
 
+        # 靜音預覽播放
         self.play_btn = ctk.CTkButton(
             control_frame,
-            text="▶",
-            width=40,
+            text="▶ 預覽 (靜音)",
             height=35,
             state="disabled",
+            fg_color="transparent",
+            border_width=1,
             command=self._toggle_play
         )
-        self.play_btn.grid(row=0, column=0, padx=(0, 10))
+        self.play_btn.grid(row=0, column=0, sticky="w", padx=(0, 10))
 
         # 進度條
         self.progress_slider = ctk.CTkSlider(
@@ -488,17 +490,19 @@ class VideoManagerPanel(ctk.CTkFrame):
             number_of_steps=100,
             command=self._on_seek
         )
-        self.progress_slider.grid(row=0, column=1, sticky="ew")
+        self.progress_slider.grid(row=0, column=1, sticky="ew", padx=5)
         self.progress_slider.set(0)
         self.progress_slider.configure(state="disabled")
+        control_frame.grid_columnconfigure(1, weight=1)
 
-        # 外部播放器按鈕
+        # 外部播放器按鈕 (有聲音)
         self.external_btn = ctk.CTkButton(
             control_frame,
-            text="🔗",
-            width=40,
+            text="▶ 播放 (有聲音)",
             height=35,
             state="disabled",
+            fg_color=COLORS["primary"],
+            text_color="#000000",
             command=self._play_external
         )
         self.external_btn.grid(row=0, column=2, padx=(10, 0))
@@ -529,12 +533,12 @@ class VideoManagerPanel(ctk.CTkFrame):
         self.current_name_label = ctk.CTkLabel(
             rename_frame,
             text="-",
-            font=ctk.CTkFont(size=12),
-            wraplength=350,
+            font=ctk.CTkFont(size=11),
+            wraplength=500,
             anchor="w",
             justify="left"
         )
-        self.current_name_label.grid(row=2, column=0, sticky="w", padx=10, pady=(2, 10))
+        self.current_name_label.grid(row=2, column=0, sticky="ew", padx=10, pady=(2, 10))
 
         # 新檔名輸入
         ctk.CTkLabel(
@@ -653,7 +657,7 @@ class VideoManagerPanel(ctk.CTkFrame):
         # 載入影片
         if self.player and VIDEO_PLAYER_AVAILABLE:
             if self.player.load(item.video_path):
-                self.play_btn.configure(state="normal", text="▶")
+                self.play_btn.configure(state="normal", text="▶ 預覽 (靜音)")
                 self.progress_slider.configure(state="normal")
                 self.progress_slider.set(0)
             else:
@@ -689,7 +693,7 @@ class VideoManagerPanel(ctk.CTkFrame):
         self.video_canvas.delete("all")
 
         # 停用控制
-        self.play_btn.configure(state="disabled", text="▶")
+        self.play_btn.configure(state="disabled", text="▶ 預覽 (靜音)")
         self.progress_slider.set(0)
         self.progress_slider.configure(state="disabled")
         self.external_btn.configure(state="disabled")
@@ -707,12 +711,12 @@ class VideoManagerPanel(ctk.CTkFrame):
 
         if self.player.is_playing:
             if self.player.toggle_pause():
-                self.play_btn.configure(text="▶")
+                self.play_btn.configure(text="▶ 預覽 (靜音)")
             else:
-                self.play_btn.configure(text="⏸")
+                self.play_btn.configure(text="⏸ 暫停")
         else:
             self.player.play()
-            self.play_btn.configure(text="⏸")
+            self.play_btn.configure(text="⏸ 暫停")
             self._update_progress()
 
     def _update_progress(self):
@@ -737,7 +741,7 @@ class VideoManagerPanel(ctk.CTkFrame):
         # 停止內嵌播放
         if self.player:
             self.player.stop()
-            self.play_btn.configure(text="▶")
+            self.play_btn.configure(text="▶ 預覽 (靜音)")
 
         try:
             if sys.platform == 'win32':
