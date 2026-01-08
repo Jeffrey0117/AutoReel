@@ -565,9 +565,15 @@ class VideoManagerPanel(ctk.CTkFrame):
         )
         self.extension_label.grid(row=5, column=0, sticky="w", padx=10)
 
+        # 按鈕區
+        btn_frame = ctk.CTkFrame(rename_frame, fg_color="transparent")
+        btn_frame.grid(row=6, column=0, sticky="ew", padx=10, pady=15)
+        btn_frame.grid_columnconfigure(0, weight=1)
+        btn_frame.grid_columnconfigure(1, weight=0)
+
         # 重新命名按鈕
         self.rename_btn = ctk.CTkButton(
-            rename_frame,
+            btn_frame,
             text="💾 套用新名稱",
             height=40,
             fg_color=COLORS["primary"],
@@ -575,9 +581,38 @@ class VideoManagerPanel(ctk.CTkFrame):
             state="disabled",
             command=self._rename_video
         )
-        self.rename_btn.grid(row=6, column=0, sticky="ew", padx=10, pady=15)
+        self.rename_btn.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+
+        # 開啟 Web 版本按鈕
+        self.web_btn = ctk.CTkButton(
+            btn_frame,
+            text="🌐 Web版",
+            width=80,
+            height=40,
+            fg_color="transparent",
+            border_width=1,
+            command=self._open_web_rename
+        )
+        self.web_btn.grid(row=0, column=1)
 
     # === 功能方法 ===
+
+    def _open_web_rename(self):
+        """開啟 Web 版本的重命名工具"""
+        server_script = PROJECT_ROOT / "video_rename_server.py"
+        if server_script.exists():
+            # 啟動伺服器
+            subprocess.Popen(
+                [sys.executable, str(server_script)],
+                cwd=str(PROJECT_ROOT),
+                creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == 'win32' else 0
+            )
+        else:
+            # 直接開啟 HTML (需要手動啟動伺服器)
+            html_path = PROJECT_ROOT / "video_rename.html"
+            if html_path.exists():
+                import webbrowser
+                webbrowser.open(str(html_path))
 
     def _browse_folder(self):
         """瀏覽資料夾"""

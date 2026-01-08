@@ -256,7 +256,10 @@
         // 載入範例
         function loadExamples() {
             fetch('/api/ig-examples')
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error('需要後端伺服器');
+                    return r.json();
+                })
                 .then(data => {
                     exampleList.innerHTML = '';
                     const examples = data.examples || [];
@@ -275,7 +278,7 @@
                     });
                 })
                 .catch(err => {
-                    exampleList.innerHTML = '<p style="color: #ff6666;">載入失敗</p>';
+                    exampleList.innerHTML = '<p style="color: #ff6666;">請執行 python web_server.py 啟動後端</p>';
                 });
         }
 
@@ -327,7 +330,10 @@
         // 載入草稿列表
         function loadDrafts() {
             fetch('/api/drafts')
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error('需要後端伺服器');
+                    return r.json();
+                })
                 .then(data => {
                     draftSelect.innerHTML = '<option value="">-- 選擇草稿重新生成 --</option>';
                     (data.drafts || []).forEach(name => {
@@ -336,13 +342,19 @@
                         opt.textContent = name;
                         draftSelect.appendChild(opt);
                     });
+                })
+                .catch(() => {
+                    draftSelect.innerHTML = '<option value="">-- 需要後端伺服器 --</option>';
                 });
         }
 
         // 載入已生成的文案
         function loadGeneratedCaptions() {
             fetch('/api/ig-captions')
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error('需要後端伺服器');
+                    return r.json();
+                })
                 .then(data => {
                     generatedList.innerHTML = '';
                     const captions = data.captions || [];
@@ -364,8 +376,7 @@
                     });
                 })
                 .catch(err => {
-                    console.error('載入文案失敗:', err);
-                    generatedList.innerHTML = '<p style="color: #ff6666;">載入失敗: ' + err.message + '</p>';
+                    generatedList.innerHTML = '<p style="color: #ff6666;">請執行 python web_server.py 啟動後端</p>';
                 });
         }
 

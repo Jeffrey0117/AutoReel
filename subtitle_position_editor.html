@@ -228,7 +228,10 @@
 
         // 載入現有設定
         fetch('/api/config')
-            .then(r => r.json())
+            .then(r => {
+                if (!r.ok) throw new Error('API not available');
+                return r.json();
+            })
             .then(data => {
                 const style = data.config?.subtitle_style ?? {};
                 slider.value = style.position_y ?? -0.45;
@@ -239,13 +242,19 @@
                 randomColorCheck.checked = style.text_color_random ?? false;
                 updatePreview();
             })
-            .catch(() => {});
+            .catch(() => {
+                // 沒有後端時使用預設值
+                updatePreview();
+            });
 
         // 載入草稿列表
         function loadDrafts() {
             draftSelect.innerHTML = '<option value="">-- 載入中... --</option>';
             fetch('/api/drafts')
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error('需要啟動後端伺服器');
+                    return r.json();
+                })
                 .then(data => {
                     draftSelect.innerHTML = '<option value="">-- 選擇草稿 --</option>';
                     if (data.drafts && data.drafts.length > 0) {
@@ -263,9 +272,9 @@
                     }
                 })
                 .catch(err => {
-                    draftSelect.innerHTML = '<option value="">-- 載入失敗 --</option>';
+                    draftSelect.innerHTML = '<option value="">-- 需要後端伺服器 --</option>';
                     statusDiv.className = 'status error';
-                    statusDiv.textContent = '載入草稿失敗: ' + err.message;
+                    statusDiv.textContent = '請執行 python web_server.py 啟動後端';
                 });
         }
         loadDrafts();

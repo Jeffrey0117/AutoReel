@@ -233,7 +233,10 @@
         function loadDrafts() {
             draftSelect.innerHTML = '<option value="">-- 載入中... --</option>';
             fetch('/api/drafts')
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error('需要後端伺服器');
+                    return r.json();
+                })
                 .then(data => {
                     draftSelect.innerHTML = '<option value="">-- 選擇草稿 --</option>';
                     if (data.drafts && data.drafts.length > 0) {
@@ -249,8 +252,8 @@
                     }
                 })
                 .catch(err => {
-                    draftSelect.innerHTML = '<option value="">-- 載入失敗 --</option>';
-                    showStatus('載入草稿失敗: ' + err.message, 'error');
+                    draftSelect.innerHTML = '<option value="">-- 需要後端伺服器 --</option>';
+                    showStatus('請執行 python web_server.py 啟動後端', 'error');
                 });
         }
 
