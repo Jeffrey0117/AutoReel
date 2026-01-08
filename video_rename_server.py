@@ -12,6 +12,7 @@ from pathlib import Path
 import socketserver
 import webbrowser
 import mimetypes
+import socket
 
 # 預設影片資料夾
 DEFAULT_VIDEO_FOLDER = "videos/translate_raw"
@@ -236,10 +237,37 @@ class VideoRenameHandler(http.server.SimpleHTTPRequestHandler):
             print(f"[API] {args[0]}")
 
 
+def find_available_port(start_port=8765, max_attempts=10):
+    """尋找可用的 port"""
+    for i in range(max_attempts):
+        port = start_port + i
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(('', port))
+                return port
+        except OSError:
+            continue
+    return None
+
+
 def run_server(port=8765):
     """啟動伺服器"""
-    with socketserver.TCPServer(("", port), VideoRenameHandler) as httpd:
-        url = f"http://localhost:{port}/video_rename.html"
+    # 自動尋找可用 port
+    available_port = find_available_port(port)
+
+    if available_port is None:
+        print(f"\n[錯誤] 無法找到可用的 port (嘗試了 {port}-{port+9})")
+        print("請關閉佔用 port 的程式，或手動指定其他 port")
+        return
+
+    if available_port != port:
+        print(f"\n[注意] Port {port} 已被佔用，改用 {available_port}")
+
+    # 設定 socket 可重用
+    socketserver.TCPServer.allow_reuse_address = True
+
+    with socketserver.TCPServer(("", available_port), VideoRenameHandler) as httpd:
+        url = f"http://localhost:{available_port}/video_rename.html"
         print(f"\n{'='*50}")
         print(f"  Video Rename Server")
         print(f"{'='*50}")

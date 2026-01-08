@@ -5,13 +5,8 @@ echo ============================================
 echo   Video Translate - Web Tools Server
 echo ============================================
 echo.
-echo Starting server on http://localhost:8765
-echo.
-echo Available tools:
-echo   - Video Rename: http://localhost:8765/video_rename.html
-echo   - Subtitle Position: http://localhost:8765/subtitle_position_editor.html
-echo   - Subtitle Editor: http://localhost:8765/subtitle_editor.html
-echo   - IG Caption: http://localhost:8765/ig_caption_editor.html
+echo Starting server (auto port: 8765-8774)
+echo Browser will open automatically
 echo.
 echo Press Ctrl+C to stop the server
 echo ============================================

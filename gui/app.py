@@ -200,7 +200,7 @@ class VideoTranslateApp(ctk.CTk):
                 cwd=str(PROJECT_ROOT),
                 creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == 'win32' else 0
             )
-            self.set_status("Web 工具伺服器已啟動 (http://localhost:8765)")
+            self.set_status("Web 工具伺服器啟動中，瀏覽器將自動開啟...")
         else:
             self.set_status("找不到 video_rename_server.py")
 
