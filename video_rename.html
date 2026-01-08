@@ -75,12 +75,12 @@
             color: #00d4ff;
         }
 
-        .folder-input {
+        .folder-select {
             padding: 10px 15px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .folder-input input {
+        .folder-select select {
             width: 100%;
             padding: 10px 12px;
             background: rgba(255, 255, 255, 0.08);
@@ -88,10 +88,12 @@
             border-radius: 8px;
             color: #fff;
             font-size: 0.85rem;
+            cursor: pointer;
         }
 
-        .folder-input input::placeholder {
-            color: #666;
+        .folder-select select option {
+            background: #1a1a2e;
+            color: #fff;
         }
 
         .video-list {
@@ -167,6 +169,8 @@
         .video-preview .placeholder {
             color: #444;
             font-size: 1rem;
+            text-align: center;
+            line-height: 1.6;
         }
 
         /* 重命名區 */
@@ -307,6 +311,23 @@
             color: #a0aec0;
         }
 
+        .help-text code {
+            background: rgba(0, 212, 255, 0.15);
+            color: #00d4ff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #666;
+        }
+
         /* RWD */
         @media (max-width: 900px) {
             .main-layout {
@@ -336,13 +357,13 @@
                     <h2>影片列表</h2>
                     <button id="refreshBtn" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer;">刷新</button>
                 </div>
-                <div class="folder-input">
-                    <input type="text" id="folderPath" placeholder="拖曳影片到此處，或輸入資料夾路徑...">
+                <div class="folder-select">
+                    <select id="folderSelect">
+                        <option value="videos/translate_raw">videos/translate_raw</option>
+                    </select>
                 </div>
                 <div class="video-list" id="videoList">
-                    <div style="padding: 40px 20px; text-align: center; color: #444;">
-                        拖曳影片檔案到這裡<br>或選擇資料夾
-                    </div>
+                    <div class="loading">載入中...</div>
                 </div>
                 <div class="video-count" id="videoCount">0 個影片</div>
             </div>
@@ -370,11 +391,9 @@
                     <button class="rename-btn" id="renameBtn" disabled>套用新名稱</button>
 
                     <div class="help-text">
-                        <strong>使用說明：</strong><br>
-                        1. 拖曳影片檔案到左側列表<br>
-                        2. 點擊影片預覽並輸入新名稱<br>
-                        3. 點擊「套用新名稱」完成重命名<br><br>
-                        <strong>注意：</strong>此為純前端工具，實際檔案操作需要搭配後端服務或手動修改。
+                        <strong>使用方式：</strong><br>
+                        執行 <code>python video_rename_server.py</code> 啟動伺服器<br>
+                        或雙擊 <code>啟動影片重命名.bat</code>
                     </div>
                 </div>
             </div>
@@ -384,11 +403,16 @@
     <div class="toast" id="toast"></div>
 
     <script>
+        // API 基礎路徑
+        const API_BASE = '';
+
         // 狀態
         let videos = [];
         let selectedVideo = null;
+        let currentFolder = 'videos/translate_raw';
 
         // DOM 元素
+        const folderSelect = document.getElementById('folderSelect');
         const videoList = document.getElementById('videoList');
         const videoCount = document.getElementById('videoCount');
         const videoPreview = document.getElementById('videoPreview');
@@ -426,17 +450,62 @@
             return idx > 0 ? filename.substring(0, idx) : filename;
         }
 
+        // 載入資料夾列表
+        async function loadFolders() {
+            try {
+                const res = await fetch(`${API_BASE}/api/folders`);
+                const data = await res.json();
+
+                if (data.folders && data.folders.length > 0) {
+                    folderSelect.innerHTML = data.folders.map(f =>
+                        `<option value="${f.path}">${f.name}</option>`
+                    ).join('');
+                }
+            } catch (e) {
+                console.log('無法載入資料夾列表:', e);
+            }
+        }
+
+        // 載入影片列表
+        async function loadVideos() {
+            videoList.innerHTML = '<div class="loading">載入中...</div>';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/videos?folder=${encodeURIComponent(currentFolder)}`);
+                const data = await res.json();
+
+                if (data.error) {
+                    videoList.innerHTML = `<div class="loading" style="color: #f66;">${data.error}</div>`;
+                    videoCount.textContent = '0 個影片';
+                    return;
+                }
+
+                videos = data.videos || [];
+                renderVideoList();
+
+            } catch (e) {
+                videoList.innerHTML = `
+                    <div class="loading" style="color: #f66;">
+                        無法連接伺服器<br><br>
+                        請執行:<br>
+                        <code style="color: #00d4ff;">python video_rename_server.py</code>
+                    </div>
+                `;
+                videoCount.textContent = '0 個影片';
+            }
+        }
+
         // 渲染影片列表
         function renderVideoList() {
             if (videos.length === 0) {
                 videoList.innerHTML = `
                     <div style="padding: 40px 20px; text-align: center; color: #444;">
-                        拖曳影片檔案到這裡<br>或選擇資料夾
+                        此資料夾沒有影片
                     </div>
                 `;
             } else {
                 videoList.innerHTML = videos.map((video, index) => `
-                    <div class="video-item ${selectedVideo === video ? 'selected' : ''}" data-index="${index}">
+                    <div class="video-item ${selectedVideo && selectedVideo.path === video.path ? 'selected' : ''}" data-index="${index}">
                         <div class="name">${video.name}</div>
                         <div class="info">${formatSize(video.size)}</div>
                     </div>
@@ -459,12 +528,9 @@
             selectedVideo = video;
             renderVideoList();
 
-            // 更新預覽
-            if (video.url) {
-                videoPreview.innerHTML = `<video controls src="${video.url}"></video>`;
-            } else {
-                videoPreview.innerHTML = `<div class="placeholder">無法預覽此影片</div>`;
-            }
+            // 更新預覽 - 使用後端提供的影片
+            const videoUrl = `${API_BASE}/video/${video.path}`;
+            videoPreview.innerHTML = `<video controls src="${videoUrl}"></video>`;
 
             // 更新重命名區
             currentName.textContent = video.name;
@@ -474,54 +540,8 @@
             renameBtn.disabled = false;
         }
 
-        // 處理檔案拖曳
-        videoList.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            videoList.style.background = 'rgba(0, 212, 255, 0.1)';
-        });
-
-        videoList.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            videoList.style.background = '';
-        });
-
-        videoList.addEventListener('drop', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            videoList.style.background = '';
-
-            const files = Array.from(e.dataTransfer.files);
-            const videoFiles = files.filter(f =>
-                f.type.startsWith('video/') ||
-                /\.(mp4|mov|avi|mkv|webm|m4v)$/i.test(f.name)
-            );
-
-            if (videoFiles.length === 0) {
-                showToast('沒有找到影片檔案', true);
-                return;
-            }
-
-            // 加入列表
-            videoFiles.forEach(file => {
-                // 檢查是否已存在
-                if (!videos.find(v => v.name === file.name)) {
-                    videos.push({
-                        name: file.name,
-                        size: file.size,
-                        file: file,
-                        url: URL.createObjectURL(file)
-                    });
-                }
-            });
-
-            renderVideoList();
-            showToast(`已加入 ${videoFiles.length} 個影片`);
-        });
-
-        // 重命名按鈕
-        renameBtn.addEventListener('click', () => {
+        // 重命名
+        async function renameVideo() {
             if (!selectedVideo) return;
 
             const newName = newNameInput.value.trim();
@@ -546,48 +566,80 @@
                 return;
             }
 
-            // 檢查是否重複
-            if (videos.find(v => v.name === fullNewName && v !== selectedVideo)) {
-                showToast('已有同名檔案', true);
-                return;
+            // 送出重命名請求
+            renameBtn.disabled = true;
+            renameBtn.textContent = '處理中...';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/rename`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        oldPath: selectedVideo.path,
+                        newName: newName
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.error) {
+                    showToast(data.error, true);
+                } else {
+                    showToast(`已重命名: ${data.oldName} → ${data.newName}`);
+
+                    // 更新本地資料
+                    selectedVideo.name = data.newName;
+                    selectedVideo.path = data.newPath;
+                    currentName.textContent = data.newName;
+
+                    // 重新載入列表
+                    await loadVideos();
+
+                    // 重新選擇
+                    const updated = videos.find(v => v.path === data.newPath);
+                    if (updated) {
+                        selectVideo(updated);
+                    }
+                }
+
+            } catch (e) {
+                showToast('重命名失敗: ' + e.message, true);
             }
 
-            // 更新名稱 (前端模擬)
-            const oldName = selectedVideo.name;
-            selectedVideo.name = fullNewName;
-            currentName.textContent = fullNewName;
+            renameBtn.disabled = false;
+            renameBtn.textContent = '套用新名稱';
+        }
 
-            renderVideoList();
-            showToast(`已重命名: ${oldName} → ${fullNewName}`);
+        // 事件綁定
+        renameBtn.addEventListener('click', renameVideo);
 
-            // 提示實際操作
-            console.log(`[Rename] ${oldName} → ${fullNewName}`);
-            console.log('注意: 這只是前端模擬，實際檔案未被修改');
-        });
-
-        // Enter 鍵觸發重命名
         newNameInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                renameBtn.click();
+                renameVideo();
             }
         });
 
-        // 刷新按鈕
-        document.getElementById('refreshBtn').addEventListener('click', () => {
-            videos = [];
+        folderSelect.addEventListener('change', () => {
+            currentFolder = folderSelect.value;
             selectedVideo = null;
-            renderVideoList();
             videoPreview.innerHTML = '<div class="placeholder">選擇一個影片來預覽</div>';
             currentName.textContent = '-';
             newNameInput.value = '';
             newNameInput.disabled = true;
             extensionSpan.textContent = '';
             renameBtn.disabled = true;
-            showToast('已清空列表');
+            loadVideos();
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            loadFolders();
+            loadVideos();
+            showToast('已刷新');
         });
 
         // 初始化
-        renderVideoList();
+        loadFolders();
+        loadVideos();
     </script>
 </body>
 </html>
