@@ -8,6 +8,7 @@ import customtkinter as ctk
 from pathlib import Path
 import sys
 import os
+import subprocess
 
 # 加入專案根目錄到 path
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -138,6 +139,18 @@ class VideoTranslateApp(ctk.CTk):
         )
         self.nav_buttons["translate"].pack(side="left", padx=5, pady=5)
 
+        # Web 工具按鈕 (右側)
+        web_btn = ctk.CTkButton(
+            nav_frame,
+            text="🌐 Web 工具",
+            width=100,
+            height=35,
+            fg_color="transparent",
+            border_width=1,
+            command=self._open_web_tools
+        )
+        web_btn.pack(side="right", padx=5, pady=5)
+
     def _show_panel(self, panel_name: str):
         """顯示指定面板"""
         # 更新導航按鈕樣式
@@ -177,6 +190,19 @@ class VideoTranslateApp(ctk.CTk):
     def set_status(self, text: str):
         """更新狀態列文字"""
         self.status_label.configure(text=text)
+
+    def _open_web_tools(self):
+        """啟動 Web 工具伺服器"""
+        server_script = PROJECT_ROOT / "video_rename_server.py"
+        if server_script.exists():
+            subprocess.Popen(
+                [sys.executable, str(server_script)],
+                cwd=str(PROJECT_ROOT),
+                creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == 'win32' else 0
+            )
+            self.set_status("Web 工具伺服器已啟動 (http://localhost:8765)")
+        else:
+            self.set_status("找不到 video_rename_server.py")
 
     def _on_closing(self):
         """視窗關閉事件"""
