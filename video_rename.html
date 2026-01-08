@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Rename - 影片重新命名</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 30px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            color: #a0aec0;
+        }
+
+        /* 主要布局 */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 25px;
+            height: calc(100vh - 160px);
+        }
+
+        /* 左側：影片列表 */
+        .video-list-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-header h2 {
+            font-size: 1.1rem;
+            color: #00d4ff;
+        }
+
+        .folder-input {
+            padding: 10px 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .folder-input input {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.85rem;
+        }
+
+        .folder-input input::placeholder {
+            color: #666;
+        }
+
+        .video-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .video-item {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .video-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .video-item.selected {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(123, 44, 191, 0.2));
+            border-color: #00d4ff;
+        }
+
+        .video-item .name {
+            font-size: 0.9rem;
+            color: #fff;
+            word-break: break-all;
+            margin-bottom: 5px;
+        }
+
+        .video-item .info {
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        .video-count {
+            padding: 10px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        /* 右側：預覽與編輯 */
+        .preview-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .video-preview {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0a0a15;
+            position: relative;
+            min-height: 300px;
+        }
+
+        .video-preview video {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .video-preview .placeholder {
+            color: #444;
+            font-size: 1rem;
+        }
+
+        /* 重命名區 */
+        .rename-section {
+            padding: 25px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .rename-section h3 {
+            font-size: 1rem;
+            color: #00d4ff;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 6px;
+        }
+
+        .form-group .current-name {
+            font-size: 0.9rem;
+            color: #a0aec0;
+            word-break: break-all;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+        }
+
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input[type="text"]:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+
+        .form-group .extension {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 4px 10px;
+            background: rgba(0, 212, 255, 0.15);
+            color: #00d4ff;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .rename-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .rename-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.3);
+        }
+
+        .rename-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 返回連結 */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #00d4ff;
+            text-decoration: none;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            transition: opacity 0.2s;
+        }
+
+        .back-link:hover {
+            opacity: 0.8;
+        }
+
+        /* 訊息提示 */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 15px 25px;
+            background: rgba(0, 200, 100, 0.9);
+            color: #fff;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast.error {
+            background: rgba(255, 80, 80, 0.9);
+        }
+
+        /* 說明文字 */
+        .help-text {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #888;
+            line-height: 1.6;
+        }
+
+        .help-text strong {
+            color: #a0aec0;
+        }
+
+        /* RWD */
+        @media (max-width: 900px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .video-list-panel {
+                max-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← 返回首頁</a>
+
+        <header>
+            <h1>Video Rename</h1>
+            <p class="subtitle">預覽影片並重新命名</p>
+        </header>
+
+        <div class="main-layout">
+            <!-- 左側：影片列表 -->
+            <div class="video-list-panel">
+                <div class="panel-header">
+                    <h2>影片列表</h2>
+                    <button id="refreshBtn" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer;">刷新</button>
+                </div>
+                <div class="folder-input">
+                    <input type="text" id="folderPath" placeholder="拖曳影片到此處，或輸入資料夾路徑...">
+                </div>
+                <div class="video-list" id="videoList">
+                    <div style="padding: 40px 20px; text-align: center; color: #444;">
+                        拖曳影片檔案到這裡<br>或選擇資料夾
+                    </div>
+                </div>
+                <div class="video-count" id="videoCount">0 個影片</div>
+            </div>
+
+            <!-- 右側：預覽與編輯 -->
+            <div class="preview-panel">
+                <div class="video-preview" id="videoPreview">
+                    <div class="placeholder">選擇一個影片來預覽</div>
+                </div>
+
+                <div class="rename-section">
+                    <h3>重新命名</h3>
+
+                    <div class="form-group">
+                        <label>目前檔名</label>
+                        <div class="current-name" id="currentName">-</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>新檔名</label>
+                        <input type="text" id="newName" placeholder="輸入新的檔案名稱..." disabled>
+                        <span class="extension" id="extension"></span>
+                    </div>
+
+                    <button class="rename-btn" id="renameBtn" disabled>套用新名稱</button>
+
+                    <div class="help-text">
+                        <strong>使用說明：</strong><br>
+                        1. 拖曳影片檔案到左側列表<br>
+                        2. 點擊影片預覽並輸入新名稱<br>
+                        3. 點擊「套用新名稱」完成重命名<br><br>
+                        <strong>注意：</strong>此為純前端工具，實際檔案操作需要搭配後端服務或手動修改。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // 狀態
+        let videos = [];
+        let selectedVideo = null;
+
+        // DOM 元素
+        const videoList = document.getElementById('videoList');
+        const videoCount = document.getElementById('videoCount');
+        const videoPreview = document.getElementById('videoPreview');
+        const currentName = document.getElementById('currentName');
+        const newNameInput = document.getElementById('newName');
+        const extensionSpan = document.getElementById('extension');
+        const renameBtn = document.getElementById('renameBtn');
+        const toast = document.getElementById('toast');
+
+        // 顯示提示訊息
+        function showToast(message, isError = false) {
+            toast.textContent = message;
+            toast.className = 'toast' + (isError ? ' error' : '');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // 格式化檔案大小
+        function formatSize(bytes) {
+            if (bytes < 1024 * 1024) {
+                return (bytes / 1024).toFixed(1) + ' KB';
+            }
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        // 取得副檔名
+        function getExtension(filename) {
+            const idx = filename.lastIndexOf('.');
+            return idx > 0 ? filename.substring(idx) : '';
+        }
+
+        // 取得不含副檔名的名稱
+        function getBaseName(filename) {
+            const idx = filename.lastIndexOf('.');
+            return idx > 0 ? filename.substring(0, idx) : filename;
+        }
+
+        // 渲染影片列表
+        function renderVideoList() {
+            if (videos.length === 0) {
+                videoList.innerHTML = `
+                    <div style="padding: 40px 20px; text-align: center; color: #444;">
+                        拖曳影片檔案到這裡<br>或選擇資料夾
+                    </div>
+                `;
+            } else {
+                videoList.innerHTML = videos.map((video, index) => `
+                    <div class="video-item ${selectedVideo === video ? 'selected' : ''}" data-index="${index}">
+                        <div class="name">${video.name}</div>
+                        <div class="info">${formatSize(video.size)}</div>
+                    </div>
+                `).join('');
+
+                // 綁定點擊事件
+                videoList.querySelectorAll('.video-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const index = parseInt(item.dataset.index);
+                        selectVideo(videos[index]);
+                    });
+                });
+            }
+
+            videoCount.textContent = `${videos.length} 個影片`;
+        }
+
+        // 選擇影片
+        function selectVideo(video) {
+            selectedVideo = video;
+            renderVideoList();
+
+            // 更新預覽
+            if (video.url) {
+                videoPreview.innerHTML = `<video controls src="${video.url}"></video>`;
+            } else {
+                videoPreview.innerHTML = `<div class="placeholder">無法預覽此影片</div>`;
+            }
+
+            // 更新重命名區
+            currentName.textContent = video.name;
+            newNameInput.value = getBaseName(video.name);
+            newNameInput.disabled = false;
+            extensionSpan.textContent = getExtension(video.name);
+            renameBtn.disabled = false;
+        }
+
+        // 處理檔案拖曳
+        videoList.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            videoList.style.background = 'rgba(0, 212, 255, 0.1)';
+        });
+
+        videoList.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            videoList.style.background = '';
+        });
+
+        videoList.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            videoList.style.background = '';
+
+            const files = Array.from(e.dataTransfer.files);
+            const videoFiles = files.filter(f =>
+                f.type.startsWith('video/') ||
+                /\.(mp4|mov|avi|mkv|webm|m4v)$/i.test(f.name)
+            );
+
+            if (videoFiles.length === 0) {
+                showToast('沒有找到影片檔案', true);
+                return;
+            }
+
+            // 加入列表
+            videoFiles.forEach(file => {
+                // 檢查是否已存在
+                if (!videos.find(v => v.name === file.name)) {
+                    videos.push({
+                        name: file.name,
+                        size: file.size,
+                        file: file,
+                        url: URL.createObjectURL(file)
+                    });
+                }
+            });
+
+            renderVideoList();
+            showToast(`已加入 ${videoFiles.length} 個影片`);
+        });
+
+        // 重命名按鈕
+        renameBtn.addEventListener('click', () => {
+            if (!selectedVideo) return;
+
+            const newName = newNameInput.value.trim();
+            if (!newName) {
+                showToast('請輸入新的檔案名稱', true);
+                return;
+            }
+
+            // 檢查非法字元
+            const invalidChars = /[<>:"/\\|?*]/;
+            if (invalidChars.test(newName)) {
+                showToast('檔名不能包含 < > : " / \\ | ? *', true);
+                return;
+            }
+
+            const extension = getExtension(selectedVideo.name);
+            const fullNewName = newName + extension;
+
+            // 檢查是否同名
+            if (fullNewName === selectedVideo.name) {
+                showToast('檔名沒有變更');
+                return;
+            }
+
+            // 檢查是否重複
+            if (videos.find(v => v.name === fullNewName && v !== selectedVideo)) {
+                showToast('已有同名檔案', true);
+                return;
+            }
+
+            // 更新名稱 (前端模擬)
+            const oldName = selectedVideo.name;
+            selectedVideo.name = fullNewName;
+            currentName.textContent = fullNewName;
+
+            renderVideoList();
+            showToast(`已重命名: ${oldName} → ${fullNewName}`);
+
+            // 提示實際操作
+            console.log(`[Rename] ${oldName} → ${fullNewName}`);
+            console.log('注意: 這只是前端模擬，實際檔案未被修改');
+        });
+
+        // Enter 鍵觸發重命名
+        newNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                renameBtn.click();
+            }
+        });
+
+        // 刷新按鈕
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            videos = [];
+            selectedVideo = null;
+            renderVideoList();
+            videoPreview.innerHTML = '<div class="placeholder">選擇一個影片來預覽</div>';
+            currentName.textContent = '-';
+            newNameInput.value = '';
+            newNameInput.disabled = true;
+            extensionSpan.textContent = '';
+            renameBtn.disabled = true;
+            showToast('已清空列表');
+        });
+
+        // 初始化
+        renderVideoList();
+    </script>
+</body>
+</html>
