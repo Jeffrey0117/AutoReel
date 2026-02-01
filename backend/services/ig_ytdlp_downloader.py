@@ -6,6 +6,7 @@ Instagram 下載服務 - 使用 yt-dlp 作為備案
 
 import asyncio
 import os
+import shutil
 from pathlib import Path
 from typing import Optional, Dict, Any
 import yt_dlp
@@ -90,17 +91,22 @@ class InstagramYtdlpService:
                 info = ydl.extract_info(url, download=True)
                 filename = ydl.prepare_filename(info)
 
+            basename = os.path.basename(filename)
+
             await manager.broadcast({
                 "type": "ig_ytdlp_completed",
                 "data": {
                     "url": url,
-                    "filename": os.path.basename(filename),
+                    "filename": basename,
                 }
             })
 
+            # 自動複製到翻譯資料夾並觸發翻譯
+            await self._auto_translate(filename)
+
             return {
                 "success": True,
-                "filename": os.path.basename(filename),
+                "filename": basename,
                 "method": "yt-dlp"
             }
 
@@ -121,6 +127,30 @@ class InstagramYtdlpService:
         finally:
             self.is_running = False
             self.current_task = None
+
+    async def _auto_translate(self, filepath: str):
+        """複製下載的影片到 translate_raw 並自動觸發翻譯 pipeline"""
+        try:
+            from services.translate_service import translate_service
+            src = Path(filepath)
+            if not src.exists():
+                return
+            dest = translate_service.videos_folder / src.name
+            translate_service.videos_folder.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(src), str(dest))
+
+            await manager.broadcast({
+                "type": "translate_auto_queued",
+                "data": {"filename": src.name, "source": "ig"}
+            })
+
+            if not translate_service.is_running:
+                translate_service.start_pipeline()
+        except Exception as e:
+            await manager.broadcast({
+                "type": "translate_auto_queued",
+                "data": {"filename": Path(filepath).name, "error": str(e)}
+            })
 
     async def get_info(self, url: str) -> Dict[str, Any]:
         """獲取 Instagram 內容資訊"""

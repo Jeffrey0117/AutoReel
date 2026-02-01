@@ -3186,6 +3186,16 @@
                             loadTranslateResults();
                             break;
 
+                        case 'translate_auto_queued':
+                            if (data.error) {
+                                addTranslateLog('error', `[自動翻譯] 排入失敗: ${data.error}`);
+                            } else {
+                                addTranslateLog('info', `[自動翻譯] ${data.filename} 已從 ${data.source === 'youtube' ? 'YT' : 'IG'} 下載排入翻譯`);
+                                showToast(`${data.filename} 已排入翻譯`, 'success');
+                                loadTranslateVideos();
+                            }
+                            break;
+
                         case 'translate_download_progress':
                             ts.value.downloadStatus = data;
                             if (data.status === 'completed') {

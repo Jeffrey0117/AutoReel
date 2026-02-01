@@ -5,6 +5,7 @@ YouTube 下載服務 - 使用 yt-dlp
 
 import asyncio
 import os
+import shutil
 from pathlib import Path
 from typing import Optional, Dict, Any
 import yt_dlp
@@ -168,19 +169,24 @@ class YouTubeDownloadService:
                     "status": "completed",
                 })
 
+            basename = os.path.basename(filename)
+
             # 廣播完成
             await manager.broadcast({
                 "type": "yt_completed",
                 "data": {
                     "title": info.get('title'),
-                    "filename": os.path.basename(filename),
+                    "filename": basename,
                 }
             })
+
+            # 自動複製到翻譯資料夾並觸發翻譯
+            await self._auto_translate(filename)
 
             return {
                 "success": True,
                 "title": info.get('title'),
-                "filename": os.path.basename(filename),
+                "filename": basename,
             }
 
         except Exception as e:
@@ -204,6 +210,30 @@ class YouTubeDownloadService:
         finally:
             self.is_running = False
             self.current_task = None
+
+    async def _auto_translate(self, filepath: str):
+        """複製下載的影片到 translate_raw 並自動觸發翻譯 pipeline"""
+        try:
+            from services.translate_service import translate_service
+            src = Path(filepath)
+            if not src.exists():
+                return
+            dest = translate_service.videos_folder / src.name
+            translate_service.videos_folder.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(src), str(dest))
+
+            await manager.broadcast({
+                "type": "translate_auto_queued",
+                "data": {"filename": src.name, "source": "youtube"}
+            })
+
+            if not translate_service.is_running:
+                translate_service.start_pipeline()
+        except Exception as e:
+            await manager.broadcast({
+                "type": "translate_auto_queued",
+                "data": {"filename": Path(filepath).name, "error": str(e)}
+            })
 
     def get_history(self):
         return self.history[:50]
