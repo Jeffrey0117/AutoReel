@@ -1,0 +1,3916 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoReels - 自動化 IG Reels 創作平台</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/design-system.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* ===== 頁面專屬樣式覆寫 ===== */
+
+        /* 底部導航欄樣式 - Swiss Design */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 72px;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border-default);
+            padding: 0 var(--space-6);
+            z-index: 100;
+        }
+
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-1);
+            padding: var(--space-2) var(--space-4);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all var(--duration-fast) var(--ease-default);
+            min-width: 72px;
+            position: relative;
+        }
+
+        .bottom-nav-item:hover {
+            color: var(--text-secondary);
+            background: var(--bg-card-hover);
+        }
+
+        .bottom-nav-item.active {
+            color: var(--text-primary);
+        }
+
+        .bottom-nav-item.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 2px;
+            background: var(--text-primary);
+        }
+
+        .bottom-nav-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bottom-nav-label {
+            font-size: var(--text-xs);
+            font-weight: var(--font-medium);
+        }
+
+        /* Dashboard */
+        .dashboard-welcome {
+            margin-bottom: var(--space-8);
+        }
+
+        .welcome-title {
+            font-size: var(--text-3xl);
+            font-weight: var(--font-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+
+        .welcome-subtitle {
+            color: var(--text-secondary);
+            font-size: var(--text-base);
+        }
+
+        /* 專案卡片 */
+        .project-card {
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .project-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .project-card.translate::before { background: var(--module-subtitle); }
+
+        .project-card-content {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-4);
+        }
+
+        .project-title {
+            font-size: var(--text-xl);
+            font-weight: var(--font-semibold);
+            color: var(--text-primary);
+        }
+
+        .project-desc {
+            color: var(--text-secondary);
+            font-size: var(--text-sm);
+        }
+
+        /* 工具按鈕 */
+        .quick-tools {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-3);
+            margin-top: var(--space-6);
+        }
+
+        .tool-btn {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-3) var(--space-4);
+            background: transparent;
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+            font-size: var(--text-sm);
+            cursor: pointer;
+            transition: all 150ms ease;
+        }
+
+        .tool-btn:hover {
+            background: var(--bg-card);
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+        }
+
+        /* 工作流頁面 */
+        .workflow-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--space-6);
+        }
+
+        .workflow-title {
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+
+        .workflow-subtitle {
+            color: var(--text-secondary);
+        }
+
+        .execute-btn {
+            padding: var(--space-4) var(--space-8);
+            font-size: var(--text-base);
+            gap: var(--space-3);
+        }
+
+        /* 配置面板 */
+        .config-panel {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-4);
+            margin-bottom: var(--space-6);
+        }
+
+        .config-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            padding: var(--space-4);
+        }
+
+        .config-label {
+            font-size: var(--text-xs);
+            font-weight: var(--font-medium);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-2);
+        }
+
+        .config-value {
+            font-size: var(--text-sm);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .config-value input {
+            flex: 1;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            padding: var(--space-2) var(--space-3);
+            color: var(--text-primary);
+            font-size: var(--text-sm);
+        }
+
+        .config-value input:focus {
+            outline: none;
+            border-color: var(--text-primary);
+        }
+
+        .config-value .btn {
+            padding: var(--space-2) var(--space-3);
+            font-size: var(--text-xs);
+        }
+
+        /* 進度區 */
+        .progress-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            padding: var(--space-6);
+            margin-bottom: var(--space-6);
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--space-4);
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+        }
+
+        .progress-bar-container {
+            background: var(--border-default);
+            height: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--text-primary);
+            transition: width 300ms ease;
+        }
+
+        .progress-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-4);
+            margin-top: var(--space-4);
+        }
+
+        /* 下載頁面 */
+        .download-input {
+            width: 100%;
+            min-height: 140px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            padding: var(--space-4);
+            color: var(--text-primary);
+            font-size: var(--text-sm);
+            font-family: var(--font-sans);
+            resize: vertical;
+            transition: border-color 150ms ease;
+        }
+
+        .download-input:focus {
+            outline: none;
+            border-color: var(--text-primary);
+        }
+
+        .download-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .download-tabs {
+            display: flex;
+            gap: var(--space-1);
+            margin-bottom: var(--space-4);
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .download-tab {
+            padding: var(--space-3) var(--space-4);
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+            transition: color 150ms ease;
+            position: relative;
+        }
+
+        .download-tab:hover {
+            color: var(--text-secondary);
+        }
+
+        .download-tab.active {
+            color: var(--text-primary);
+        }
+
+        .download-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--text-primary);
+        }
+
+        /* 佇列項目 */
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+            padding: var(--space-3);
+            transition: background 150ms ease;
+        }
+
+        .queue-item:hover {
+            background: var(--bg-card);
+        }
+
+        .queue-item + .queue-item {
+            border-top: 1px solid var(--border-default);
+        }
+
+        .queue-icon {
+            font-size: var(--text-base);
+            width: 24px;
+            text-align: center;
+        }
+
+        .queue-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .queue-url {
+            font-size: var(--text-sm);
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .queue-status {
+            font-size: var(--text-xs);
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .status-pending { color: var(--text-muted); }
+        .status-processing { color: var(--text-secondary); }
+        .status-completed { color: var(--text-primary); }
+        .status-failed { color: #ef4444; }
+
+        /* 設定行 */
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-4) 0;
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .setting-row:last-child {
+            border-bottom: none;
+        }
+
+        .setting-label {
+            font-size: var(--text-sm);
+            color: var(--text-primary);
+        }
+
+        .setting-value {
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+        }
+
+        /* Toggle 開關 */
+        .toggle {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            display: inline-block;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: var(--border-default);
+            border-radius: 0;
+            transition: 200ms;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: var(--text-primary);
+            border-radius: 0;
+            transition: 200ms;
+        }
+
+        .toggle input:checked + .toggle-slider {
+            background: var(--text-primary);
+        }
+
+        .toggle input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+
+        /* YouTube 頁面 */
+        .yt-url-input {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 0;
+            padding: var(--space-3) var(--space-4);
+            color: var(--text-primary);
+            font-size: var(--text-sm);
+        }
+
+        .yt-url-input:focus {
+            outline: none;
+            border-color: var(--text-primary);
+        }
+
+        .yt-video-info {
+            display: flex;
+            gap: var(--space-6);
+            margin-bottom: var(--space-6);
+        }
+
+        .yt-thumbnail {
+            width: 280px;
+            height: 158px;
+            object-fit: cover;
+            border-radius: 0;
+        }
+
+        .yt-video-details {
+            flex: 1;
+        }
+
+        .yt-video-title {
+            font-size: var(--text-xl);
+            font-weight: var(--font-semibold);
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+            line-height: 1.4;
+        }
+
+        .yt-video-channel {
+            color: var(--text-secondary);
+            margin-bottom: var(--space-2);
+        }
+
+        .yt-video-meta {
+            color: var(--text-muted);
+            font-size: var(--text-sm);
+        }
+
+        .yt-options {
+            display: flex;
+            gap: var(--space-8);
+            padding: var(--space-4);
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 0;
+        }
+
+        .yt-option-group {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .yt-select {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 0;
+            padding: var(--space-2) var(--space-4);
+            color: var(--text-primary);
+            font-size: var(--text-sm);
+            cursor: pointer;
+        }
+
+        .yt-select:focus {
+            outline: none;
+            border-color: var(--text-primary);
+        }
+
+        .yt-progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--space-3);
+        }
+
+        .yt-progress-meta {
+            display: flex;
+            gap: var(--space-6);
+            margin-top: var(--space-3);
+            font-size: var(--text-sm);
+            color: var(--text-muted);
+        }
+
+        /* YouTube 下載進度增強 */
+        .yt-download-progress {
+            border-width: 1px;
+            border-color: var(--border-default);
+            margin-bottom: 24px;
+        }
+
+        .yt-download-progress.status-parsing {
+            border-color: var(--text-muted);
+        }
+
+        .yt-download-progress.status-downloading {
+            border-color: var(--text-secondary);
+        }
+
+        .yt-download-progress.status-processing {
+            border-color: var(--text-secondary);
+        }
+
+        .yt-download-progress.status-completed {
+            border-color: var(--text-primary);
+        }
+
+        .yt-download-progress.status-failed {
+            border-color: #ef4444;
+        }
+
+        .yt-progress-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-4);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .status-text {
+            font-size: var(--text-lg);
+            font-weight: var(--font-semibold);
+            color: var(--text-primary);
+        }
+
+        .status-percentage {
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            color: var(--text-primary);
+        }
+
+        .yt-progress-bar {
+            transition: width 0.5s ease, background 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .yt-progress-bar::after {
+            display: none;
+        }
+
+        .yt-progress-details {
+            background: var(--bg-card);
+            border-radius: 0;
+            padding: var(--space-4);
+            margin-top: var(--space-4);
+            border: 1px solid var(--border-default);
+        }
+
+        .yt-progress-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-2) 0;
+        }
+
+        .yt-progress-row + .yt-progress-row {
+            border-top: 1px solid var(--border-default);
+        }
+
+        .detail-label {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            font-weight: var(--font-medium);
+        }
+
+        .detail-value {
+            font-size: var(--text-sm);
+            color: var(--text-primary);
+            font-weight: var(--font-medium);
+        }
+
+        .speed-value {
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+        }
+
+        .eta-value {
+            color: var(--text-secondary);
+        }
+
+        .yt-status-message {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            margin-top: var(--space-4);
+            padding: var(--space-3);
+            background: var(--bg-card);
+            border-left: 2px solid var(--text-primary);
+            border-radius: 0;
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+        }
+
+        /* Spinning 動畫 */
+        .spinning-icon {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Header Actions */
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            margin-left: auto;
+        }
+
+        .header-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: transparent;
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--duration-fast) var(--ease-default);
+        }
+
+        .header-btn:hover {
+            background: var(--bg-card);
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+        }
+
+        /* 後端狀態指示器 */
+        .backend-status {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--border-default);
+            font-size: var(--text-xs);
+            cursor: pointer;
+            transition: all var(--duration-fast) var(--ease-default);
+        }
+
+        .backend-status:hover {
+            background: var(--bg-card);
+        }
+
+        .backend-status .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .backend-status.connected .status-dot {
+            background: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+        }
+
+        .backend-status.disconnected .status-dot {
+            background: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+            animation: none;
+        }
+
+        .backend-status.connecting .status-dot {
+            background: #eab308;
+            box-shadow: 0 0 8px #eab308;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* 後端未啟動提示 Modal */
+        .backend-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-4);
+        }
+
+        .backend-modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            max-width: 520px;
+            width: 100%;
+            padding: var(--space-8);
+        }
+
+        .backend-modal-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            margin-bottom: var(--space-6);
+        }
+
+        .backend-modal-header .icon {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .backend-modal-title {
+            font-size: var(--text-xl);
+            font-weight: var(--font-bold);
+            color: var(--text-primary);
+        }
+
+        .backend-modal-subtitle {
+            font-size: var(--text-sm);
+            color: var(--text-muted);
+            margin-top: var(--space-1);
+        }
+
+        .backend-modal-content {
+            margin-bottom: var(--space-6);
+        }
+
+        .backend-modal-step {
+            display: flex;
+            gap: var(--space-3);
+            padding: var(--space-3) 0;
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .backend-modal-step:last-child {
+            border-bottom: none;
+        }
+
+        .step-number {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            font-size: var(--text-xs);
+            font-weight: var(--font-bold);
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+            color: var(--text-primary);
+            margin-bottom: var(--space-1);
+        }
+
+        .step-desc {
+            font-size: var(--text-xs);
+            color: var(--text-muted);
+        }
+
+        .step-code {
+            margin-top: var(--space-2);
+            padding: var(--space-2) var(--space-3);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+            user-select: all;
+            cursor: pointer;
+        }
+
+        .backend-modal-actions {
+            display: flex;
+            gap: var(--space-3);
+        }
+
+        .backend-modal-actions .btn {
+            flex: 1;
+        }
+
+        /* 響應式調整 */
+        @media (max-width: 768px) {
+            .yt-video-info {
+                flex-direction: column;
+            }
+            .yt-thumbnail {
+                width: 100%;
+                height: auto;
+            }
+            .yt-options {
+                flex-direction: column;
+                gap: var(--space-4);
+            }
+
+            .config-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .workflow-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--space-4);
+            }
+
+            .execute-btn {
+                width: 100%;
+            }
+        }
+
+        /* ===== 字幕編輯器樣式 ===== */
+        .subtitle-editor {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: var(--space-6);
+        }
+
+        @media (max-width: 1024px) {
+            .subtitle-editor {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .subtitle-settings-panel {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-6);
+        }
+
+        .subtitle-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            padding: var(--space-5);
+        }
+
+        .subtitle-section-title {
+            font-size: var(--text-sm);
+            font-weight: var(--font-semibold);
+            color: var(--text-primary);
+            margin-bottom: var(--space-4);
+            padding-bottom: var(--space-3);
+            border-bottom: 1px solid var(--border-default);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .subtitle-form-group {
+            margin-bottom: var(--space-4);
+        }
+
+        .subtitle-form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .subtitle-form-label {
+            display: block;
+            font-size: var(--text-xs);
+            color: var(--text-muted);
+            margin-bottom: var(--space-2);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .subtitle-form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-3);
+        }
+
+        .subtitle-slider-group {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .subtitle-slider-group input[type="range"] {
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            background: var(--border-default);
+            cursor: pointer;
+        }
+
+        .subtitle-slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .subtitle-slider-value {
+            min-width: 45px;
+            text-align: right;
+            font-size: var(--text-sm);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+        }
+
+        .subtitle-color-group {
+            display: flex;
+            gap: var(--space-2);
+            align-items: center;
+        }
+
+        .subtitle-color-group input[type="color"] {
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--border-default);
+            background: transparent;
+            cursor: pointer;
+            padding: 2px;
+        }
+
+        .subtitle-color-group input[type="text"] {
+            flex: 1;
+            padding: var(--space-2) var(--space-3);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            font-size: var(--text-sm);
+            font-family: var(--font-mono);
+        }
+
+        .subtitle-color-group input[type="text"]:focus {
+            outline: none;
+            border-color: var(--text-primary);
+        }
+
+        .subtitle-checkbox-row {
+            display: flex;
+            gap: var(--space-6);
+        }
+
+        .subtitle-checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .subtitle-checkbox-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--text-primary);
+        }
+
+        .subtitle-checkbox-group label {
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .subtitle-input {
+            width: 100%;
+            padding: var(--space-2) var(--space-3);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            font-size: var(--text-sm);
+        }
+
+        .subtitle-input:focus {
+            outline: none;
+            border-color: var(--text-primary);
+        }
+
+        .subtitle-textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: var(--space-3);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            font-size: var(--text-sm);
+            font-family: var(--font-sans);
+            resize: vertical;
+        }
+
+        .subtitle-textarea:focus {
+            outline: none;
+            border-color: var(--text-primary);
+        }
+
+        .subtitle-btn-group {
+            display: flex;
+            gap: var(--space-3);
+            margin-top: var(--space-4);
+        }
+
+        /* Preview Panel */
+        .subtitle-preview-panel {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-6);
+        }
+
+        .subtitle-preview-container {
+            background: #000;
+            aspect-ratio: 9/16;
+            max-height: 500px;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border-default);
+        }
+
+        .subtitle-preview-top {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            width: 90%;
+            font-size: 16px;
+            color: #FFD700;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .subtitle-preview-text {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            padding: 6px 12px;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        /* Video List */
+        .subtitle-video-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .subtitle-video-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-2) var(--space-3);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+        }
+
+        .subtitle-video-item input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Start Section */
+        .subtitle-start-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            padding: var(--space-5);
+            text-align: center;
+        }
+
+        .subtitle-start-section p {
+            color: var(--text-muted);
+            font-size: var(--text-sm);
+            margin-bottom: var(--space-4);
+        }
+
+        /* Status Bar */
+        .subtitle-status {
+            padding: var(--space-3) var(--space-4);
+            font-size: var(--text-sm);
+            border: 1px solid var(--border-default);
+        }
+
+        .subtitle-status.success {
+            border-color: var(--text-primary);
+            color: var(--text-primary);
+        }
+
+        .subtitle-status.error {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .subtitle-status.running {
+            border-color: var(--text-secondary);
+            color: var(--text-secondary);
+        }
+
+        /* Log Output */
+        .subtitle-log-output {
+            background: #0a0a0a;
+            border: 1px solid var(--border-default);
+            padding: var(--space-4);
+            max-height: 250px;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+            white-space: pre-wrap;
+            color: #00ff00;
+        }
+
+        /* ===== 翻譯工作流 - Upload Zone ===== */
+        .upload-zone {
+            border: 2px dashed var(--border-default);
+            padding: var(--space-8);
+            text-align: center;
+            transition: all 200ms ease;
+            cursor: pointer;
+            margin-bottom: var(--space-6);
+        }
+
+        .upload-zone:hover,
+        .upload-zone.drag-over {
+            border-color: var(--text-primary);
+            background: var(--bg-card-hover);
+        }
+
+        .upload-zone.drag-over {
+            border-style: solid;
+        }
+
+        .upload-zone-icon {
+            font-size: var(--text-3xl);
+            margin-bottom: var(--space-3);
+            color: var(--text-muted);
+        }
+
+        .upload-zone-text {
+            color: var(--text-secondary);
+            font-size: var(--text-sm);
+            margin-bottom: var(--space-4);
+        }
+
+        .upload-zone-divider {
+            color: var(--text-muted);
+            font-size: var(--text-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin: var(--space-4) 0;
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .upload-zone-divider::before,
+        .upload-zone-divider::after {
+            content: '';
+            flex: 1;
+            border-top: 1px solid var(--border-default);
+        }
+
+        .url-input-row {
+            display: flex;
+            gap: var(--space-3);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .url-input-row input {
+            flex: 1;
+            padding: var(--space-3) var(--space-4);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            font-size: var(--text-sm);
+        }
+
+        .url-input-row input:focus {
+            outline: none;
+            border-color: var(--text-primary);
+        }
+
+        /* ===== Pipeline Stages ===== */
+        .pipeline-queue {
+            margin-bottom: var(--space-6);
+        }
+
+        .pipeline-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+            padding: var(--space-3) var(--space-4);
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .pipeline-item:last-child {
+            border-bottom: none;
+        }
+
+        .pipeline-item-name {
+            min-width: 180px;
+            font-size: var(--text-sm);
+            color: var(--text-primary);
+            font-weight: var(--font-medium);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pipeline-stages {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            flex: 1;
+        }
+
+        .pipeline-stage {
+            display: flex;
+            align-items: center;
+            gap: var(--space-1);
+            font-size: var(--text-xs);
+            color: var(--text-muted);
+            padding: var(--space-1) var(--space-2);
+            border: 1px solid var(--border-default);
+        }
+
+        .pipeline-stage.done {
+            color: var(--text-primary);
+            border-color: var(--text-primary);
+        }
+
+        .pipeline-stage.active {
+            color: var(--text-secondary);
+            border-color: var(--text-secondary);
+        }
+
+        .pipeline-stage.error {
+            color: #ef4444;
+            border-color: #ef4444;
+        }
+
+        .pipeline-arrow {
+            color: var(--text-muted);
+            font-size: var(--text-xs);
+        }
+
+        /* ===== Video Item ===== */
+        .video-list-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+            padding: var(--space-3) var(--space-4);
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .video-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .video-list-name {
+            flex: 1;
+            font-size: var(--text-sm);
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .video-list-size {
+            font-size: var(--text-xs);
+            color: var(--text-muted);
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .video-list-actions {
+            display: flex;
+            gap: var(--space-2);
+        }
+
+        .video-list-actions .btn {
+            padding: var(--space-1) var(--space-3);
+            font-size: var(--text-xs);
+        }
+
+        /* ===== Status Badge ===== */
+        .badge {
+            display: inline-block;
+            padding: 2px var(--space-2);
+            font-size: var(--text-xs);
+            font-weight: var(--font-medium);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-pending {
+            color: var(--text-muted);
+            border: 1px solid var(--text-muted);
+        }
+
+        .badge-processing {
+            color: var(--text-secondary);
+            border: 1px solid var(--text-secondary);
+        }
+
+        .badge-done {
+            color: var(--text-primary);
+            border: 1px solid var(--text-primary);
+        }
+
+        .badge-failed {
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }
+
+        /* ===== Download Progress ===== */
+        .download-indicator {
+            padding: var(--space-4);
+            border: 1px solid var(--text-secondary);
+            margin-bottom: var(--space-4);
+        }
+
+        .download-indicator-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--space-3);
+            font-size: var(--text-sm);
+        }
+
+        /* ===== Log Toggle ===== */
+        .log-toggle {
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-3) 0;
+            color: var(--text-secondary);
+            font-size: var(--text-sm);
+        }
+
+        .log-toggle:hover {
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-inner">
+                <a class="header-logo" href="autoreels.html">
+                    <div class="header-logo-icon"><i data-lucide="clapperboard"></i></div>
+                    <span>AutoReels</span>
+                </a>
+                <div class="header-actions">
+                    <!-- 後端狀態指示器 -->
+                    <div class="backend-status" :class="backendStatus" @click="showBackendModal = true" :title="t('backend.title' + (backendStatus === 'connected' ? 'Connected' : backendStatus === 'connecting' ? 'Connecting' : 'Disconnected'))">
+                        <span class="status-dot"></span>
+                        <span>{{ t('backend.' + backendStatus) }}</span>
+                    </div>
+                    <button class="header-btn" @click="toggleTheme" :title="theme === 'dark' ? '切換淺色模式' : '切換深色模式'">
+                        <i :data-lucide="theme === 'dark' ? 'sun' : 'moon'" style="width:20px;height:20px;"></i>
+                    </button>
+                    <button class="header-btn" @click="toggleLocale">
+                        {{ currentLocale === 'zh' ? 'EN' : '中' }}
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main -->
+        <main class="app-main">
+            <!-- Content -->
+            <div class="app-content">
+                <!-- Dashboard -->
+                <div v-if="currentView === 'dashboard'">
+                    <div class="dashboard-welcome">
+                        <h1 class="welcome-title">歡迎使用 AutoReels</h1>
+                        <p class="welcome-subtitle">選擇專案開始工作，或使用下方快速工具</p>
+                    </div>
+
+                    <!-- 統計 -->
+                    <div class="section">
+                        <div class="grid grid-4">
+                            <div class="stat-card">
+                                <div class="stat-value">{{ stats.videos }}</div>
+                                <div class="stat-label">待處理影片</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">{{ stats.processed }}</div>
+                                <div class="stat-label">已處理</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">{{ stats.drafts }}</div>
+                                <div class="stat-label">剪映草稿</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">{{ stats.success }}%</div>
+                                <div class="stat-label">成功率</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 專案 -->
+                    <div class="section">
+                        <div class="section-header">
+                            <h2 class="section-title"><i data-lucide="rocket" style="width:20px;height:20px;"></i> 專案</h2>
+                        </div>
+                        <div class="grid grid-2">
+                            <div class="card project-card translate" @click="selectProject('translate'); currentView = 'workflow'">
+                                <div class="project-card-content">
+                                    <div class="card-icon subtitle"><i data-lucide="globe" style="width:28px;height:28px;"></i></div>
+                                    <h3 class="project-title">翻譯專案</h3>
+                                    <p class="project-desc">自動翻譯英文影片字幕，生成剪映草稿</p>
+                                    <button class="btn btn-primary">開始工作</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 快速工具 -->
+                    <div class="section">
+                        <div class="section-header">
+                            <h2 class="section-title"><i data-lucide="wrench" style="width:20px;height:20px;"></i> 工具箱</h2>
+                        </div>
+                        <div class="quick-tools">
+                            <button class="tool-btn" @click="currentView = 'template'"><i data-lucide="file-text" style="width:14px;height:14px;"></i> 模板編輯</button>
+                            <button class="tool-btn" @click="currentView = 'subtitle'"><i data-lucide="captions" style="width:14px;height:14px;"></i> 字幕工具</button>
+                            <button class="tool-btn" @click="currentView = 'social'"><i data-lucide="share-2" style="width:14px;height:14px;"></i> IG 文案</button>
+                            <button class="tool-btn" @click="currentView = 'settings'"><i data-lucide="settings" style="width:14px;height:14px;"></i> 設定</button>
+                            <button class="tool-btn" @click="currentView = 'help'"><i data-lucide="help-circle" style="width:14px;height:14px;"></i> 使用說明</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Workflow (翻譯專案) -->
+                <div v-if="currentView === 'workflow'">
+                    <div class="workflow-header">
+                        <div>
+                            <h1 class="workflow-title">{{ t('workflow.translateProject') }}</h1>
+                            <p class="workflow-subtitle">{{ t('workflow.translateDesc') }}</p>
+                        </div>
+                        <button class="btn btn-success execute-btn"
+                                @click="startTranslatePipeline"
+                                :disabled="ts.isRunning || ts.videos.length === 0">
+                            <i :data-lucide="ts.isRunning ? 'loader-2' : 'play'" style="width:18px;height:18px;"
+                               :class="{ 'spinning-icon': ts.isRunning }"></i>
+                            {{ ts.isRunning ? t('workflow.executing') : t('workflow.startExecute') }}
+                        </button>
+                    </div>
+
+                    <!-- 拖拉上傳 + URL 輸入 -->
+                    <div class="upload-zone"
+                         :class="{ 'drag-over': ts.isDragOver }"
+                         @dragover.prevent="ts.isDragOver = true"
+                         @dragleave.prevent="ts.isDragOver = false"
+                         @drop.prevent="handleFileDrop($event)"
+                         @click="triggerFileInput">
+                        <div class="upload-zone-icon"><i data-lucide="upload-cloud" style="width:40px;height:40px;"></i></div>
+                        <div class="upload-zone-text">拖拉 .mp4 / .mkv 影片到此處上傳</div>
+                        <div class="upload-zone-divider">或</div>
+                        <div class="url-input-row" @click.stop>
+                            <input type="text"
+                                   v-model="ts.urlInput"
+                                   placeholder="貼上 YouTube / IG 網址..."
+                                   @keyup.enter="downloadFromUrl"
+                                   :disabled="ts.isDownloading">
+                            <button class="btn btn-primary"
+                                    @click.stop="downloadFromUrl"
+                                    :disabled="!ts.urlInput.trim() || ts.isDownloading">
+                                {{ ts.isDownloading ? '下載中...' : '下載' }}
+                            </button>
+                        </div>
+                        <input type="file" ref="fileInput" style="display:none"
+                               accept=".mp4,.mkv,.avi,.mov" multiple
+                               @change="handleFileSelect($event)">
+                    </div>
+
+                    <!-- URL 下載進度 -->
+                    <div v-if="ts.downloadStatus" class="download-indicator">
+                        <div class="download-indicator-header">
+                            <span style="color: var(--text-secondary);">{{ ts.downloadStatus.url }}</span>
+                            <span style="color: var(--text-primary);">{{ Math.round(ts.downloadStatus.progress || 0) }}%</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" :style="{ width: (ts.downloadStatus.progress || 0) + '%' }"></div>
+                        </div>
+                        <div style="margin-top: 6px; font-size: var(--text-xs); color: var(--text-muted);">
+                            {{ ts.downloadStatus.status === 'completed' ? '下載完成，開始翻譯...' : ts.downloadStatus.filename || ts.downloadStatus.status }}
+                        </div>
+                    </div>
+
+                    <!-- 處理佇列 (WebSocket 即時更新) -->
+                    <div v-if="ts.processingQueue.length > 0" class="card pipeline-queue" style="margin-bottom: var(--space-6);">
+                        <h3 class="card-title" style="margin-bottom: var(--space-4);">
+                            <i data-lucide="activity" style="width:18px;height:18px;"></i>
+                            處理佇列
+                        </h3>
+                        <!-- Overall progress -->
+                        <div class="progress-section" style="padding: var(--space-3); margin-bottom: var(--space-4);">
+                            <div class="progress-header">
+                                <span>{{ ts.progressText }}</span>
+                                <span>{{ ts.total > 0 ? Math.round((ts.completed + ts.failed) / ts.total * 100) : 0 }}%</span>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" :style="{ width: (ts.total > 0 ? ((ts.completed + ts.failed) / ts.total * 100) : 0) + '%' }"></div>
+                            </div>
+                            <div class="progress-stats" style="margin-top: var(--space-3);">
+                                <div class="stat-card">
+                                    <div class="stat-value" style="color: var(--text-primary)">{{ ts.total }}</div>
+                                    <div class="stat-label">{{ t('workflow.totalVideos') }}</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value" style="color: var(--text-primary)">{{ ts.completed }}</div>
+                                    <div class="stat-label">{{ t('workflow.processed') }}</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value" style="color: var(--text-secondary)">{{ ts.total - ts.completed - ts.failed }}</div>
+                                    <div class="stat-label">{{ t('workflow.processing') }}</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value" style="color: #ef4444">{{ ts.failed }}</div>
+                                    <div class="stat-label">{{ t('workflow.errors') }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Per-video pipeline stages -->
+                        <div v-for="item in ts.processingQueue" :key="item.video" class="pipeline-item">
+                            <span class="pipeline-item-name" :title="item.video">{{ item.video }}</span>
+                            <div class="pipeline-stages">
+                                <span class="pipeline-stage"
+                                      :class="{ done: item.transcribe === 'done', active: item.transcribe === 'active', error: item.transcribe === 'error' }">
+                                    {{ item.transcribe === 'done' ? '辨識 ✓' : item.transcribe === 'active' ? '辨識 ⏳' : '辨識 ○' }}
+                                </span>
+                                <span class="pipeline-arrow">→</span>
+                                <span class="pipeline-stage"
+                                      :class="{ done: item.translate === 'done', active: item.translate === 'active', error: item.translate === 'error' }">
+                                    {{ item.translate === 'done' ? '翻譯 ✓' : item.translate === 'active' ? '翻譯 ⏳' : '翻譯 ○' }}
+                                </span>
+                                <span class="pipeline-arrow">→</span>
+                                <span class="pipeline-stage"
+                                      :class="{ done: item.draft === 'done', active: item.draft === 'active', error: item.draft === 'error' }">
+                                    {{ item.draft === 'done' ? '草稿 ✓' : item.draft === 'active' ? '草稿 ⏳' : '草稿 ○' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 影片列表 -->
+                    <div class="card" style="margin-bottom: var(--space-6);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                            <h3 class="card-title">
+                                <i data-lucide="film" style="width:18px;height:18px;"></i>
+                                影片列表 ({{ ts.videos.length }} 支影片)
+                            </h3>
+                            <button class="btn btn-secondary" @click="loadTranslateVideos" style="padding: var(--space-2) var(--space-3); font-size: var(--text-xs);">
+                                <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> 刷新
+                            </button>
+                        </div>
+                        <div v-if="ts.videos.length === 0" style="text-align: center; padding: var(--space-8); color: var(--text-muted);">
+                            沒有影片。拖拉上傳或貼網址下載
+                        </div>
+                        <div v-for="video in ts.videos" :key="video.filename" class="video-list-item">
+                            <span class="video-list-name" :title="video.filename">{{ video.filename }}</span>
+                            <span class="video-list-size">{{ formatFileSize(video.size) }}</span>
+                            <span class="badge" :class="'badge-' + video.status">{{ video.status }}</span>
+                            <div class="video-list-actions">
+                                <a v-if="video.status === 'done'"
+                                   class="btn btn-secondary"
+                                   :href="API_BASE + '/api/translate/results/' + video.name + '/srt'"
+                                   target="_blank">SRT</a>
+                                <button class="btn btn-secondary"
+                                        @click="deleteTranslateVideo(video.filename)"
+                                        :disabled="ts.isRunning"
+                                        style="color: #ef4444; border-color: #ef4444;">✕</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 執行日誌 (可展開) -->
+                    <div class="card">
+                        <div class="log-toggle" @click="ts.showLogs = !ts.showLogs">
+                            <i :data-lucide="ts.showLogs ? 'chevron-down' : 'chevron-right'" style="width:16px;height:16px;"></i>
+                            執行日誌 ({{ ts.logs.length }})
+                            <button v-if="ts.logs.length > 0" class="btn btn-secondary" @click.stop="ts.logs = []"
+                                    style="margin-left: auto; padding: 2px 8px; font-size: var(--text-xs);">清除</button>
+                        </div>
+                        <div v-if="ts.showLogs" class="log-content" ref="translateLogContainer" style="max-height: 300px;">
+                            <div v-for="(log, i) in ts.logs" :key="i" class="log-line" :class="log.type">
+                                {{ log.text }}
+                            </div>
+                            <div v-if="ts.logs.length === 0" class="log-line info">[系統] 等待操作...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Template -->
+                <div v-if="currentView === 'template'">
+                    <div class="workflow-header">
+                        <div>
+                            <h1 class="workflow-title">模板編輯器</h1>
+                            <p class="workflow-subtitle">編輯剪映草稿模板的文字內容</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <p style="color: var(--text-secondary); text-align: center; padding: 60px 0;">
+                            模板編輯器開發中...<br><br>
+                            <button class="btn btn-secondary" onclick="window.open('template-editor.html')">開啟舊版編輯器</button>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Subtitle -->
+                <div v-if="currentView === 'subtitle'">
+                    <div class="workflow-header">
+                        <div>
+                            <h1 class="workflow-title">{{ t('subtitle.title') }}</h1>
+                            <p class="workflow-subtitle">{{ t('subtitle.description') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="subtitle-editor">
+                        <!-- Settings Panel -->
+                        <div class="subtitle-settings-panel">
+                            <!-- Style Settings -->
+                            <div class="subtitle-section">
+                                <h3 class="subtitle-section-title">{{ t('subtitle.styleSettings') }}</h3>
+
+                                <div class="subtitle-form-group">
+                                    <label class="subtitle-form-label">{{ t('subtitle.fontSize') }}</label>
+                                    <div class="subtitle-slider-group">
+                                        <input type="range" v-model.number="subtitleConfig.subtitle_style.font_size" min="4" max="20" step="0.5">
+                                        <span class="subtitle-slider-value">{{ subtitleConfig.subtitle_style.font_size }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="subtitle-form-group">
+                                    <label class="subtitle-form-label">{{ t('subtitle.textColor') }}</label>
+                                    <div class="subtitle-color-group">
+                                        <input type="color" v-model="subtitleConfig.subtitle_style.text_color">
+                                        <input type="text" v-model="subtitleConfig.subtitle_style.text_color" placeholder="#FFFFFF">
+                                    </div>
+                                </div>
+
+                                <div class="subtitle-form-group">
+                                    <label class="subtitle-form-label">{{ t('subtitle.bgColor') }}</label>
+                                    <div class="subtitle-color-group">
+                                        <input type="color" v-model="subtitleConfig.subtitle_style.background_color">
+                                        <input type="text" v-model="subtitleConfig.subtitle_style.background_color" placeholder="#000000">
+                                    </div>
+                                </div>
+
+                                <div class="subtitle-form-group">
+                                    <label class="subtitle-form-label">{{ t('subtitle.bgAlpha') }}</label>
+                                    <div class="subtitle-slider-group">
+                                        <input type="range" v-model.number="subtitleConfig.subtitle_style.background_alpha" min="0" max="1" step="0.1">
+                                        <span class="subtitle-slider-value">{{ subtitleConfig.subtitle_style.background_alpha }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="subtitle-form-group">
+                                    <label class="subtitle-form-label">{{ t('subtitle.positionY') }}</label>
+                                    <div class="subtitle-slider-group">
+                                        <input type="range" v-model.number="subtitleConfig.subtitle_style.position_y" min="-0.9" max="0.9" step="0.05">
+                                        <span class="subtitle-slider-value">{{ subtitleConfig.subtitle_style.position_y }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="subtitle-form-row">
+                                    <div class="subtitle-form-group">
+                                        <label class="subtitle-form-label">{{ t('subtitle.strokeWidth') }}</label>
+                                        <input type="number" class="subtitle-input" v-model.number="subtitleConfig.subtitle_style.stroke_width" min="0" max="10" step="0.5">
+                                    </div>
+                                    <div class="subtitle-form-group">
+                                        <label class="subtitle-form-label">{{ t('subtitle.strokeColor') }}</label>
+                                        <input type="color" v-model="subtitleConfig.subtitle_style.stroke_color" style="width: 100%; height: 36px;">
+                                    </div>
+                                </div>
+
+                                <div class="subtitle-form-group">
+                                    <div class="subtitle-checkbox-row">
+                                        <div class="subtitle-checkbox-group">
+                                            <input type="checkbox" id="subtitle-bold" v-model="subtitleConfig.subtitle_style.bold">
+                                            <label for="subtitle-bold">{{ t('subtitle.bold') }}</label>
+                                        </div>
+                                        <div class="subtitle-checkbox-group">
+                                            <input type="checkbox" id="subtitle-shadow" v-model="subtitleConfig.subtitle_style.shadow">
+                                            <label for="subtitle-shadow">{{ t('subtitle.shadow') }}</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="subtitle-form-group">
+                                    <label class="subtitle-form-label">{{ t('subtitle.lineMaxWidth') }}</label>
+                                    <div class="subtitle-slider-group">
+                                        <input type="range" v-model.number="subtitleConfig.subtitle_style.line_max_width" min="0.5" max="1" step="0.05">
+                                        <span class="subtitle-slider-value">{{ (subtitleConfig.subtitle_style.line_max_width * 100).toFixed(0) }}%</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Template Text -->
+                            <div class="subtitle-section">
+                                <h3 class="subtitle-section-title">{{ t('subtitle.templateText') }}</h3>
+                                <div class="subtitle-form-group">
+                                    <label class="subtitle-form-label">{{ t('subtitle.topTitleText') }}</label>
+                                    <textarea class="subtitle-textarea" v-model="subtitleTemplateText" :placeholder="t('subtitle.topTitlePlaceholder')"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Buttons -->
+                            <div class="subtitle-btn-group">
+                                <button class="btn btn-secondary" @click="loadSubtitleConfig">{{ t('subtitle.reload') }}</button>
+                                <button class="btn btn-primary" @click="saveSubtitleConfig">{{ t('subtitle.saveConfig') }}</button>
+                            </div>
+                        </div>
+
+                        <!-- Preview Panel -->
+                        <div class="subtitle-preview-panel">
+                            <!-- Preview Container -->
+                            <div class="subtitle-section">
+                                <h3 class="subtitle-section-title">{{ t('subtitle.preview') }}</h3>
+                                <div class="subtitle-preview-container">
+                                    <!-- Top text preview -->
+                                    <div class="subtitle-preview-top">
+                                        {{ subtitleTemplateText || t('subtitle.topTitleDefault') }}
+                                    </div>
+                                    <!-- Subtitle preview -->
+                                    <div class="subtitle-preview-text" :style="subtitlePreviewStyle">
+                                        {{ subtitlePreviewText || t('subtitle.previewSubtitle') }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Video List -->
+                            <div class="subtitle-section">
+                                <h3 class="subtitle-section-title">{{ t('subtitle.pendingVideos') }} <span style="color: var(--text-primary);">({{ subtitleVideos.length }} {{ t('subtitle.videoCount') }})</span></h3>
+                                <div class="subtitle-video-list">
+                                    <div v-for="video in subtitleVideos" :key="video" class="subtitle-video-item">
+                                        <input type="checkbox" checked disabled>
+                                        <span>{{ video }}</span>
+                                    </div>
+                                    <p v-if="subtitleVideos.length === 0" style="color: var(--text-muted); padding: 16px; text-align: center;">
+                                        {{ t('subtitle.noVideos') }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Start Section -->
+                            <div class="subtitle-start-section">
+                                <p>{{ t('subtitle.startSection') }}</p>
+                                <button class="btn btn-success" style="padding: 16px 32px; font-size: 16px;" @click="startSubtitleProcess" :disabled="subtitleIsRunning || subtitleVideos.length === 0">
+                                    <i data-lucide="play" style="width:18px;height:18px;"></i>
+                                    {{ subtitleIsRunning ? t('subtitle.processing') : t('subtitle.startProcess') }}
+                                </button>
+                            </div>
+
+                            <!-- Status -->
+                            <div v-if="subtitleStatus" class="subtitle-status" :class="subtitleStatusClass">
+                                {{ subtitleStatus }}
+                            </div>
+
+                            <!-- Log Output -->
+                            <div v-if="subtitleLogs" class="subtitle-log-output" ref="subtitleLogOutput">{{ subtitleLogs }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Social -->
+                <div v-if="currentView === 'social'">
+                    <div class="workflow-header">
+                        <div>
+                            <h1 class="workflow-title">社群工具</h1>
+                            <p class="workflow-subtitle">社群媒體內容產生工具</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon social"><i data-lucide="instagram" style="width:28px;height:28px;"></i></div>
+                        <h3 class="project-title">IG 文案產生器</h3>
+                        <p class="project-desc">快速產生 Instagram 貼文文案</p>
+                        <button class="btn btn-primary" style="margin-top: 16px;" onclick="alert('開發中')">開啟工具</button>
+                    </div>
+                </div>
+
+                <!-- Download (ReelPull) -->
+                <div v-if="currentView === 'download'">
+                    <div class="workflow-header">
+                        <div>
+                            <h1 class="workflow-title">{{ t('download.title') }}</h1>
+                            <p class="workflow-subtitle">{{ t('download.subtitle') }}</p>
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <button v-if="!download.isRunning" class="btn btn-success" @click="startDownload" :disabled="download.queue.length === 0">
+                                <i data-lucide="play" style="width:16px;height:16px;"></i> {{ t('download.startDownload') }}
+                            </button>
+                            <button v-else class="btn btn-secondary" @click="stopDownload" style="border-color: #ef4444; color: #ef4444;">
+                                <i data-lucide="square" style="width:16px;height:16px;"></i> {{ t('download.stop') }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 輸入區 -->
+                    <div class="card" style="margin-bottom: 24px;">
+                        <h3 class="card-title" style="margin-bottom: 16px;"><i data-lucide="link" style="width:18px;height:18px;"></i> {{ t('download.inputUrl') }}</h3>
+                        <textarea
+                            v-model="download.urlInput"
+                            class="download-input"
+                            :placeholder="t('download.placeholder')"
+                            :disabled="download.isLoading"
+                        ></textarea>
+                        <div style="display: flex; gap: 12px; margin-top: 16px;">
+                            <button class="btn btn-primary" @click="addToQueue" :disabled="!download.urlInput.trim() || download.isLoading">
+                                {{ download.isLoading ? t('download.adding') : t('download.addToQueue') }}
+                            </button>
+                            <button class="btn btn-secondary" @click="download.urlInput = ''">{{ t('download.clear') }}</button>
+                        </div>
+                    </div>
+
+                    <!-- 即時進度 -->
+                    <div v-if="download.currentTask" class="card" style="margin-bottom: 24px; border-color: var(--text-secondary);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                            <span style="color: var(--text-secondary); font-size: 0.875rem;">{{ download.currentTask.url }}</span>
+                            <span style="color: var(--text-primary);">{{ download.currentTask.progress }}%</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" :style="{ width: download.currentTask.progress + '%', background: 'var(--text-primary)' }"></div>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted);">{{ download.currentTask.step }}</div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="download-tabs">
+                        <button class="download-tab" :class="{ active: download.activeTab === 'queue' }" @click="download.activeTab = 'queue'">
+                            {{ t('download.queue') }} ({{ download.queue.length }})
+                        </button>
+                        <button class="download-tab" :class="{ active: download.activeTab === 'history' }" @click="download.activeTab = 'history'">
+                            {{ t('download.history') }} ({{ download.history.length }})
+                        </button>
+                        <button class="download-tab" :class="{ active: download.activeTab === 'settings' }" @click="download.activeTab = 'settings'">
+                            {{ t('download.settings') }}
+                        </button>
+                    </div>
+
+                    <!-- Queue -->
+                    <div v-if="download.activeTab === 'queue'" class="card">
+                        <div v-if="download.queue.length === 0" style="text-align: center; padding: 48px; color: var(--text-muted);">
+                            <div style="margin-bottom: 12px;"><i data-lucide="inbox" style="width:48px;height:48px;stroke-width:1;"></i></div>
+                            <div>{{ t('download.emptyQueue') }}</div>
+                        </div>
+                        <div v-else>
+                            <div v-for="item in download.queue" :key="item.id" class="queue-item">
+                                <span class="queue-icon"><i :data-lucide="getStatusIcon(item.status)" style="width:18px;height:18px;" :style="{ color: item.status === 'completed' ? 'var(--text-primary)' : item.status === 'failed' ? '#ef4444' : item.status === 'processing' ? 'var(--text-secondary)' : 'var(--text-muted)' }"></i></span>
+                                <div class="queue-content">
+                                    <div class="queue-url">{{ formatUrl(item.url) }}</div>
+                                    <div class="queue-status" :class="'status-' + item.status">
+                                        {{ getStatusText(item) }}
+                                    </div>
+                                </div>
+                                <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" @click="removeFromQueue(item.id)" :disabled="item.status === 'processing'">
+                                    刪除
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- History -->
+                    <div v-if="download.activeTab === 'history'" class="card">
+                        <div v-if="download.history.length === 0" style="text-align: center; padding: 48px; color: var(--text-muted);">
+                            <div style="margin-bottom: 12px;"><i data-lucide="history" style="width:48px;height:48px;stroke-width:1;"></i></div>
+                            <div>沒有下載紀錄</div>
+                        </div>
+                        <div v-else>
+                            <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+                                <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" @click="clearHistory">清除全部</button>
+                            </div>
+                            <div v-for="item in download.history" :key="item.id" class="queue-item">
+                                <span class="queue-icon"><i :data-lucide="getStatusIcon(item.status)" style="width:18px;height:18px;" :style="{ color: item.status === 'completed' ? 'var(--text-primary)' : '#ef4444' }"></i></span>
+                                <div class="queue-content">
+                                    <div class="queue-url">{{ formatUrl(item.url) }}</div>
+                                    <div class="queue-status" :class="'status-' + item.status">
+                                        {{ item.status === 'completed' ? item.filename : item.error_message }}
+                                    </div>
+                                </div>
+                                <button v-if="item.status === 'failed'" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" @click="retryDownload(item.id)">
+                                    重試
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Settings -->
+                    <div v-if="download.activeTab === 'settings'" class="card">
+                        <div class="setting-row">
+                            <span class="setting-label">下載路徑</span>
+                            <span class="setting-value">{{ download.settings.download_path }}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">下載完成後自動移除</span>
+                            <label class="toggle">
+                                <input type="checkbox" v-model="download.settings.auto_remove">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">無頭模式（隱藏瀏覽器）</span>
+                            <label class="toggle">
+                                <input type="checkbox" v-model="download.settings.headless_mode">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- YouTube Download -->
+                <div v-if="currentView === 'youtube'">
+                    <div class="workflow-header">
+                        <div>
+                            <h1 class="workflow-title">{{ t('youtube.title') }}</h1>
+                            <p class="workflow-subtitle">{{ t('youtube.subtitle') }}</p>
+                        </div>
+                    </div>
+
+                    <!-- 輸入區 -->
+                    <div class="card" style="margin-bottom: 24px;">
+                        <h3 class="card-title" style="margin-bottom: 16px;"><i data-lucide="link" style="width:18px;height:18px;"></i> {{ t('youtube.inputUrl') }}</h3>
+                        <div style="display: flex; gap: 12px;">
+                            <input
+                                type="text"
+                                v-model="youtube.urlInput"
+                                class="yt-url-input"
+                                :placeholder="t('youtube.placeholder')"
+                                @keyup.enter="getYoutubeInfo"
+                                :disabled="youtube.isLoading || youtube.isDownloading"
+                            >
+                            <button class="btn btn-primary" @click="getYoutubeInfo" :disabled="!youtube.urlInput.trim() || youtube.isLoading || youtube.isDownloading">
+                                <i :data-lucide="youtube.isLoading ? 'loader-2' : 'search'" style="width:16px;height:16px;" :class="{ 'spinning-icon': youtube.isLoading }"></i>
+                                {{ youtube.isLoading ? t('youtube.parsing') : t('youtube.parse') }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 影片資訊 -->
+                    <div v-if="youtube.videoInfo" class="card" style="margin-bottom: 24px;">
+                        <div class="yt-video-info">
+                            <img :src="youtube.videoInfo.thumbnail" class="yt-thumbnail" alt="thumbnail">
+                            <div class="yt-video-details">
+                                <h3 class="yt-video-title">{{ youtube.videoInfo.title }}</h3>
+                                <p class="yt-video-channel">{{ youtube.videoInfo.channel }}</p>
+                                <p class="yt-video-meta">
+                                    {{ formatDuration(youtube.videoInfo.duration) }} ・
+                                    {{ formatViews(youtube.videoInfo.view_count) }} {{ t('youtube.views') }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="yt-options">
+                            <div class="yt-option-group">
+                                <label class="config-label">{{ t('youtube.quality') }}</label>
+                                <select v-model="youtube.format" class="yt-select" :disabled="youtube.isDownloading">
+                                    <option value="best">{{ t('youtube.bestQuality') }}</option>
+                                    <option value="1080p">1080p</option>
+                                    <option value="720p">720p</option>
+                                    <option value="480p">480p</option>
+                                </select>
+                            </div>
+                            <div class="yt-option-group">
+                                <label class="toggle">
+                                    <input type="checkbox" v-model="youtube.audioOnly" :disabled="youtube.isDownloading">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span style="margin-left: 8px;">{{ t('youtube.audioOnly') }}</span>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <button class="btn btn-success btn-lg" @click="startYoutubeDownload" :disabled="youtube.isDownloading">
+                                <i :data-lucide="youtube.isDownloading ? 'loader-2' : 'download'" style="width:18px;height:18px;" :class="{ 'spinning-icon': youtube.isDownloading }"></i>
+                                {{ youtube.isDownloading ? t('youtube.downloading') : t('youtube.startDownload') }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 下載進度 - 增強版 -->
+                    <div v-if="youtube.currentTask" class="card yt-download-progress" :class="'status-' + youtube.currentTask.status">
+                        <!-- 狀態標題 -->
+                        <div class="yt-progress-title">
+                            <div class="status-indicator">
+                                <i :data-lucide="getYoutubeStatusIcon(youtube.currentTask.status)"
+                                   style="width:20px;height:20px;"
+                                   :class="{ 'spinning-icon': ['parsing', 'downloading', 'processing'].includes(youtube.currentTask.status) }"></i>
+                                <span class="status-text">{{ getYoutubeStatusText(youtube.currentTask.status) }}</span>
+                            </div>
+                            <span class="status-percentage">{{ youtube.currentTask.progress?.toFixed(1) || 0 }}%</span>
+                        </div>
+
+                        <!-- 進度條 -->
+                        <div class="progress-bar-container" style="margin: 16px 0;">
+                            <div class="progress-bar yt-progress-bar"
+                                 :style="{
+                                     width: (youtube.currentTask.progress || 0) + '%',
+                                     background: getYoutubeProgressColor(youtube.currentTask.status)
+                                 }"></div>
+                        </div>
+
+                        <!-- 詳細資訊 -->
+                        <div class="yt-progress-details">
+                            <div class="yt-progress-row">
+                                <span class="detail-label">
+                                    <i data-lucide="file-text" style="width:14px;height:14px;"></i>
+                                    影片標題
+                                </span>
+                                <span class="detail-value">{{ youtube.currentTask.title || youtube.videoInfo?.title || '載入中...' }}</span>
+                            </div>
+
+                            <div v-if="youtube.currentTask.status === 'downloading'" class="yt-progress-row">
+                                <span class="detail-label">
+                                    <i data-lucide="gauge" style="width:14px;height:14px;"></i>
+                                    下載速度
+                                </span>
+                                <span class="detail-value speed-value">{{ youtube.currentTask.speed || '計算中...' }}</span>
+                            </div>
+
+                            <div v-if="youtube.currentTask.eta" class="yt-progress-row">
+                                <span class="detail-label">
+                                    <i data-lucide="clock" style="width:14px;height:14px;"></i>
+                                    預估剩餘時間
+                                </span>
+                                <span class="detail-value eta-value">{{ youtube.currentTask.eta }}</span>
+                            </div>
+
+                            <div v-if="youtube.currentTask.downloaded_bytes && youtube.currentTask.total_bytes" class="yt-progress-row">
+                                <span class="detail-label">
+                                    <i data-lucide="hard-drive" style="width:14px;height:14px;"></i>
+                                    檔案大小
+                                </span>
+                                <span class="detail-value">
+                                    {{ formatFileSize(youtube.currentTask.downloaded_bytes) }} / {{ formatFileSize(youtube.currentTask.total_bytes) }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 狀態訊息 -->
+                        <div v-if="youtube.currentTask.message" class="yt-status-message">
+                            <i data-lucide="info" style="width:14px;height:14px;"></i>
+                            {{ youtube.currentTask.message }}
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="download-tabs">
+                        <button class="download-tab" :class="{ active: youtube.activeTab === 'history' }" @click="youtube.activeTab = 'history'">
+                            {{ t('youtube.historyTab') }} ({{ youtube.history.length }})
+                        </button>
+                        <button class="download-tab" :class="{ active: youtube.activeTab === 'files' }" @click="youtube.activeTab = 'files'; loadYoutubeFiles()">
+                            {{ t('youtube.filesTab') }}
+                        </button>
+                    </div>
+
+                    <!-- History -->
+                    <div v-if="youtube.activeTab === 'history'" class="card">
+                        <div v-if="youtube.history.length === 0" style="text-align: center; padding: 48px; color: var(--text-muted);">
+                            <div style="margin-bottom: 12px;"><i data-lucide="history" style="width:48px;height:48px;stroke-width:1;"></i></div>
+                            <div>{{ t('youtube.noHistory') }}</div>
+                        </div>
+                        <div v-else>
+                            <div v-for="item in youtube.history" :key="item.id" class="queue-item">
+                                <span class="queue-icon"><i :data-lucide="item.status === 'completed' ? 'check-circle' : 'x-circle'" style="width:18px;height:18px;" :style="{ color: item.status === 'completed' ? 'var(--text-primary)' : '#ef4444' }"></i></span>
+                                <div class="queue-content">
+                                    <div class="queue-url">{{ item.title || item.url }}</div>
+                                    <div class="queue-status" :class="'status-' + item.status">
+                                        {{ item.status === 'completed' ? item.filename : item.error }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Files -->
+                    <div v-if="youtube.activeTab === 'files'" class="card">
+                        <div v-if="youtube.files.length === 0" style="text-align: center; padding: 48px; color: var(--text-muted);">
+                            <div style="margin-bottom: 12px;"><i data-lucide="folder" style="width:48px;height:48px;stroke-width:1;"></i></div>
+                            <div>{{ t('youtube.noHistory') }}</div>
+                        </div>
+                        <div v-else>
+                            <div v-for="file in youtube.files" :key="file.filename" class="queue-item">
+                                <span class="queue-icon"><i data-lucide="film" style="width:18px;height:18px;"></i></span>
+                                <div class="queue-content">
+                                    <div class="queue-url">{{ file.filename }}</div>
+                                    <div class="queue-status">{{ formatFileSize(file.size) }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings -->
+                <div v-if="currentView === 'settings'">
+                    <div class="workflow-header">
+                        <div>
+                            <h1 class="workflow-title">{{ t('settings.title') }}</h1>
+                            <p class="workflow-subtitle">{{ t('settings.subtitle') }}</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3 class="card-title"><i data-lucide="folder" style="width:18px;height:18px;"></i> {{ t('settings.pathConfig') }}</h3>
+                        <div class="config-panel" style="margin-top: 16px;">
+                            <div class="config-item">
+                                <div class="config-label">{{ t('settings.projectRoot') }}</div>
+                                <div class="config-value">
+                                    <input type="text" :value="config.projectRoot">
+                                </div>
+                            </div>
+                            <div class="config-item">
+                                <div class="config-label">{{ t('settings.draftPath') }}</div>
+                                <div class="config-value">
+                                    <input type="text" :value="config.draftFolder">
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 24px;">
+                            <button class="btn btn-primary">{{ t('settings.saveSettings') }}</button>
+                            <button class="btn btn-secondary" style="margin-left: 12px;">{{ t('settings.redetect') }}</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Help -->
+                <div v-if="currentView === 'help'">
+                    <div class="workflow-header">
+                        <div>
+                            <h1 class="workflow-title">使用說明</h1>
+                            <p class="workflow-subtitle">快速入門指南和常見問題</p>
+                        </div>
+                    </div>
+                    <div class="card" style="margin-bottom: 24px;">
+                        <h3 class="card-title"><i data-lucide="book-open" style="width:18px;height:18px;"></i> 快速入門</h3>
+                        <div style="margin-top: 16px; color: var(--text-secondary);">
+                            <p><strong>1. 設定路徑</strong><br>配置影片資料夾和剪映草稿路徑</p>
+                            <p style="margin-top: 12px;"><strong>2. 放入影片</strong><br>將待處理影片放入 videos/raw 資料夾</p>
+                            <p style="margin-top: 12px;"><strong>3. 執行工作流</strong><br>點擊「開始執行」自動處理所有影片</p>
+                            <p style="margin-top: 12px;"><strong>4. 開啟剪映</strong><br>在剪映中查看和編輯生成的草稿</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3 class="card-title"><i data-lucide="help-circle" style="width:18px;height:18px;"></i> 常見問題</h3>
+                        <div style="margin-top: 16px; color: var(--text-secondary);">
+                            <p><strong>Q: 找不到剪映草稿？</strong><br>A: 請確認剪映已安裝並至少開啟過一次，草稿路徑會自動偵測。</p>
+                            <p style="margin-top: 12px;"><strong>Q: 處理失敗怎麼辦？</strong><br>A: 檢查日誌中的錯誤訊息，通常是影片格式不支援或路徑有問題。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 底部導航欄 (App Tab Bar) -->
+        <nav class="bottom-nav">
+            <div class="nav-inner">
+                <a class="bottom-nav-item" href="autoreels.html">
+                    <div class="bottom-nav-icon">
+                        <i data-lucide="home" style="width:24px;height:24px;"></i>
+                    </div>
+                    <span class="bottom-nav-label">{{ t('nav.home') }}</span>
+                </a>
+
+                <div class="bottom-nav-item" :class="{ active: currentView === 'workflow' }" @click="currentView = 'workflow'">
+                    <div class="bottom-nav-icon">
+                        <i data-lucide="play-circle" style="width:24px;height:24px;"></i>
+                    </div>
+                    <span class="bottom-nav-label">{{ t('nav.workflow') }}</span>
+                </div>
+
+                <div class="bottom-nav-item" :class="{ active: currentView === 'download' }" @click="currentView = 'download'">
+                    <div class="bottom-nav-icon">
+                        <i data-lucide="instagram" style="width:24px;height:24px;"></i>
+                    </div>
+                    <span class="bottom-nav-label">{{ t('nav.igDownload') }}</span>
+                </div>
+
+                <div class="bottom-nav-item" :class="{ active: currentView === 'youtube' }" @click="currentView = 'youtube'">
+                    <div class="bottom-nav-icon">
+                        <i data-lucide="youtube" style="width:24px;height:24px;"></i>
+                    </div>
+                    <span class="bottom-nav-label">{{ t('nav.ytDownload') }}</span>
+                </div>
+
+                <div class="bottom-nav-item" :class="{ active: currentView === 'subtitle' }" @click="currentView = 'subtitle'">
+                    <div class="bottom-nav-icon">
+                        <i data-lucide="captions" style="width:24px;height:24px;"></i>
+                    </div>
+                    <span class="bottom-nav-label">{{ t('nav.subtitle') }}</span>
+                </div>
+
+                <div class="bottom-nav-item" :class="{ active: currentView === 'settings' }" @click="currentView = 'settings'">
+                    <div class="bottom-nav-icon">
+                        <i data-lucide="settings" style="width:24px;height:24px;"></i>
+                    </div>
+                    <span class="bottom-nav-label">{{ t('nav.settings') }}</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Toast 通知 -->
+        <div class="toast-container">
+            <div v-for="toast in toasts" :key="toast.id" class="toast" :class="'toast-' + toast.type">
+                <span class="toast-icon">
+                    <i :data-lucide="toast.type === 'success' ? 'check-circle' : toast.type === 'error' ? 'x-circle' : toast.type === 'warning' ? 'alert-triangle' : 'info'" style="width:18px;height:18px;"></i>
+                </span>
+                <span class="toast-message">{{ toast.message }}</span>
+                <button class="toast-close" @click="removeToast(toast.id)">×</button>
+            </div>
+        </div>
+
+        <!-- 後端未啟動 Modal -->
+        <div v-if="showBackendModal" class="backend-modal-overlay" @click.self="showBackendModal = false">
+            <div class="backend-modal">
+                <div class="backend-modal-header">
+                    <div class="icon">
+                        <i :data-lucide="backendStatus === 'connected' ? 'check-circle' : 'wifi-off'" style="width:24px;height:24px;"></i>
+                    </div>
+                    <div>
+                        <div class="backend-modal-title">
+                            {{ backendStatus === 'connected' ? t('backend.statusConnected') : t('backend.statusDisconnected') }}
+                        </div>
+                        <div class="backend-modal-subtitle">
+                            {{ backendStatus === 'connected' ? t('backend.descConnected') : t('backend.descDisconnected') }}
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="backendStatus !== 'connected'" class="backend-modal-content">
+                    <div class="backend-modal-step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <div class="step-title">{{ t('backend.step1Title') }}</div>
+                            <div class="step-desc">{{ t('backend.step1Desc') }}</div>
+                            <div class="step-code" @click="copyToClipboard('start-backend.bat')">start-backend.bat</div>
+                        </div>
+                    </div>
+                    <div class="backend-modal-step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <div class="step-title">{{ t('backend.step2Title') }}</div>
+                            <div class="step-desc">{{ t('backend.step2Desc') }}</div>
+                            <div class="step-code" @click="copyToClipboard('cd backend && python main.py')">cd backend && python main.py</div>
+                        </div>
+                    </div>
+                    <div class="backend-modal-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <div class="step-title">{{ t('backend.step3Title') }}</div>
+                            <div class="step-desc">{{ t('backend.step3Desc') }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else class="backend-modal-content">
+                    <div class="backend-modal-step">
+                        <div class="step-number" style="background: #22c55e;">✓</div>
+                        <div class="step-content">
+                            <div class="step-title">{{ t('backend.connectionOk') }}</div>
+                            <div class="step-desc">{{ t('backend.serviceRunning') }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="backend-modal-actions">
+                    <button class="btn btn-secondary" @click="showBackendModal = false">{{ t('backend.close') }}</button>
+                    <button v-if="backendStatus !== 'connected'" class="btn btn-primary" @click="retryBackendConnection">
+                        <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
+                        {{ t('backend.retry') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, onUpdated, nextTick, watch } = Vue;
+
+        // i18n 翻譯對象
+        const i18n = {
+            zh: {
+                nav: {
+                    home: '首頁',
+                    workflow: '工作流',
+                    igDownload: 'IG下載',
+                    ytDownload: 'YT下載',
+                    subtitle: '字幕',
+                    settings: '設定'
+                },
+                workflow: {
+                    translateProject: '翻譯專案',
+                    translateDesc: '自動翻譯英文影片字幕，生成剪映草稿',
+                    startExecute: '開始執行',
+                    executing: '執行中...',
+                    videoFolder: '影片資料夾',
+                    draftPath: '剪映草稿路徑',
+                    select: '選擇',
+                    waiting: '等待執行...',
+                    totalVideos: '總影片',
+                    processed: '已處理',
+                    processing: '處理中',
+                    errors: '錯誤',
+                    executionLog: '執行日誌',
+                    clear: '清除',
+                    systemWaiting: '[系統] 等待執行...'
+                },
+                download: {
+                    title: 'IG Reels 下載',
+                    subtitle: '批次下載 Instagram Reels 影片',
+                    inputUrl: '輸入網址',
+                    placeholder: '貼上 Instagram Reel 網址（每行一個）...\n\n例如：\nhttps://www.instagram.com/reel/xxxxx\nhttps://www.instagram.com/p/xxxxx',
+                    addToQueue: '加入佇列',
+                    adding: '加入中...',
+                    clear: '清除',
+                    startDownload: '開始下載',
+                    stop: '停止',
+                    queue: '佇列',
+                    history: '歷史',
+                    settings: '設定',
+                    delete: '刪除',
+                    retry: '重試',
+                    waiting: '等待中',
+                    downloading: '下載中',
+                    completed: '完成',
+                    failed: '失敗',
+                    emptyQueue: '佇列是空的，貼上網址開始下載'
+                },
+                youtube: {
+                    title: 'YouTube 下載',
+                    subtitle: '使用 yt-dlp 下載 YouTube 影片',
+                    inputUrl: '輸入網址',
+                    placeholder: '貼上 YouTube 網址...',
+                    parse: '解析',
+                    parsing: '解析中...',
+                    quality: '畫質',
+                    bestQuality: '最高畫質',
+                    audioOnly: '僅下載音訊 (MP3)',
+                    startDownload: '開始下載',
+                    downloading: '下載中...',
+                    speed: '下載速度',
+                    eta: '預估剩餘時間',
+                    fileSize: '檔案大小',
+                    historyTab: '歷史紀錄',
+                    filesTab: '已下載檔案',
+                    noHistory: '沒有下載紀錄',
+                    views: '次觀看'
+                },
+                settings: {
+                    title: '設定',
+                    subtitle: '配置系統路徑和偏好設定',
+                    pathConfig: '路徑配置',
+                    projectRoot: '專案根目錄',
+                    draftPath: '剪映草稿路徑',
+                    saveSettings: '儲存設定',
+                    redetect: '重新偵測',
+                    theme: '主題',
+                    dark: '深色',
+                    light: '淺色',
+                    language: '語言',
+                    chinese: '繁體中文',
+                    english: 'English'
+                },
+                common: {
+                    loading: '載入中...',
+                    error: '錯誤',
+                    success: '成功',
+                    cancel: '取消',
+                    confirm: '確認',
+                    save: '儲存'
+                },
+                backend: {
+                    connected: '已連線',
+                    connecting: '連線中...',
+                    disconnected: '未連線',
+                    statusConnected: '後端服務運行中',
+                    statusDisconnected: '後端服務未啟動',
+                    descConnected: 'YT/IG 下載功能正常運作',
+                    descDisconnected: 'YT/IG 下載功能需要後端服務',
+                    step1Title: '雙擊啟動腳本（推薦）',
+                    step1Desc: '在專案資料夾中找到並雙擊執行',
+                    step2Title: '或手動啟動',
+                    step2Desc: '在終端機中執行以下命令',
+                    step3Title: '等待連線',
+                    step3Desc: '啟動後頁面會自動偵測並連線，狀態燈會變綠色',
+                    connectionOk: '連線正常',
+                    serviceRunning: '後端服務運行於 http://localhost:8000',
+                    close: '關閉',
+                    retry: '重新連線',
+                    titleConnected: '後端服務運行中，點擊查看詳情',
+                    titleConnecting: '正在連線後端服務...',
+                    titleDisconnected: '後端服務未啟動，點擊查看啟動方式'
+                },
+                subtitle: {
+                    title: '字幕編輯器',
+                    description: '調整字幕樣式並預覽效果',
+                    styleSettings: '字幕樣式設定',
+                    fontSize: '字體大小',
+                    textColor: '文字顏色',
+                    bgColor: '背景顏色',
+                    bgAlpha: '背景透明度',
+                    positionY: '垂直位置（負值=下方）',
+                    strokeWidth: '描邊粗細',
+                    strokeColor: '描邊顏色',
+                    bold: '粗體',
+                    shadow: '陰影',
+                    lineMaxWidth: '最大行寬（自動換行）',
+                    templateText: '模板文字',
+                    topTitleText: '頂部標題文字',
+                    topTitlePlaceholder: '輸入頂部顯示的文字',
+                    reload: '重新載入',
+                    saveConfig: '儲存設定',
+                    preview: '預覽效果',
+                    previewSubtitle: '這是字幕預覽效果，會自動換行顯示',
+                    topTitleDefault: '頂部標題文字',
+                    pendingVideos: '待處理影片',
+                    videoCount: '個',
+                    noVideos: '請將影片放入 videos/translate_raw 資料夾',
+                    startSection: '確認設定後，點擊開始執行翻譯工作流程',
+                    startProcess: '開始執行',
+                    processing: '處理中...',
+                    configLoaded: '設定載入成功',
+                    loadFailed: '載入失敗',
+                    configSaved: '設定儲存成功',
+                    saveFailed: '儲存失敗',
+                    processRunning: '正在執行翻譯工作流程... (請稍候，處理中不會有即時輸出)',
+                    processWaiting: '處理中，請稍候...',
+                    processComplete: '處理完成!',
+                    processFailed: '處理失敗',
+                    executeFailed: '執行失敗'
+                }
+            },
+            en: {
+                nav: {
+                    home: 'Home',
+                    workflow: 'Workflow',
+                    igDownload: 'IG Download',
+                    ytDownload: 'YT Download',
+                    subtitle: 'Subtitle',
+                    settings: 'Settings'
+                },
+                workflow: {
+                    translateProject: 'Translate Project',
+                    translateDesc: 'Auto-translate English video subtitles, generate JianyingPro drafts',
+                    startExecute: 'Start',
+                    executing: 'Running...',
+                    videoFolder: 'Video Folder',
+                    draftPath: 'Draft Path',
+                    select: 'Select',
+                    waiting: 'Waiting...',
+                    totalVideos: 'Total',
+                    processed: 'Done',
+                    processing: 'Processing',
+                    errors: 'Errors',
+                    executionLog: 'Execution Log',
+                    clear: 'Clear',
+                    systemWaiting: '[System] Waiting...'
+                },
+                download: {
+                    title: 'IG Reels Download',
+                    subtitle: 'Batch download Instagram Reels',
+                    inputUrl: 'Enter URLs',
+                    placeholder: 'Paste Instagram Reel URLs (one per line)...\n\nExample:\nhttps://www.instagram.com/reel/xxxxx\nhttps://www.instagram.com/p/xxxxx',
+                    addToQueue: 'Add to Queue',
+                    adding: 'Adding...',
+                    clear: 'Clear',
+                    startDownload: 'Start',
+                    stop: 'Stop',
+                    queue: 'Queue',
+                    history: 'History',
+                    settings: 'Settings',
+                    delete: 'Delete',
+                    retry: 'Retry',
+                    waiting: 'Waiting',
+                    downloading: 'Downloading',
+                    completed: 'Done',
+                    failed: 'Failed',
+                    emptyQueue: 'Queue is empty, paste URLs to start'
+                },
+                youtube: {
+                    title: 'YouTube Download',
+                    subtitle: 'Download YouTube videos with yt-dlp',
+                    inputUrl: 'Enter URL',
+                    placeholder: 'Paste YouTube URL...',
+                    parse: 'Parse',
+                    parsing: 'Parsing...',
+                    quality: 'Quality',
+                    bestQuality: 'Best',
+                    audioOnly: 'Audio only (MP3)',
+                    startDownload: 'Download',
+                    downloading: 'Downloading...',
+                    speed: 'Speed',
+                    eta: 'ETA',
+                    fileSize: 'Size',
+                    historyTab: 'History',
+                    filesTab: 'Files',
+                    noHistory: 'No download history',
+                    views: 'views'
+                },
+                settings: {
+                    title: 'Settings',
+                    subtitle: 'Configure paths and preferences',
+                    pathConfig: 'Path Configuration',
+                    projectRoot: 'Project Root',
+                    draftPath: 'Draft Path',
+                    saveSettings: 'Save Settings',
+                    redetect: 'Re-detect',
+                    theme: 'Theme',
+                    dark: 'Dark',
+                    light: 'Light',
+                    language: 'Language',
+                    chinese: '繁體中文',
+                    english: 'English'
+                },
+                common: {
+                    loading: 'Loading...',
+                    error: 'Error',
+                    success: 'Success',
+                    cancel: 'Cancel',
+                    confirm: 'Confirm',
+                    save: 'Save'
+                },
+                backend: {
+                    connected: 'Connected',
+                    connecting: 'Connecting...',
+                    disconnected: 'Disconnected',
+                    statusConnected: 'Backend Running',
+                    statusDisconnected: 'Backend Not Running',
+                    descConnected: 'YT/IG download features are working',
+                    descDisconnected: 'YT/IG download requires backend service',
+                    step1Title: 'Double-click startup script (Recommended)',
+                    step1Desc: 'Find and double-click in project folder',
+                    step2Title: 'Or start manually',
+                    step2Desc: 'Run the following command in terminal',
+                    step3Title: 'Wait for connection',
+                    step3Desc: 'Page will auto-detect and connect, status will turn green',
+                    connectionOk: 'Connection OK',
+                    serviceRunning: 'Backend running at http://localhost:8000',
+                    close: 'Close',
+                    retry: 'Retry',
+                    titleConnected: 'Backend running, click for details',
+                    titleConnecting: 'Connecting to backend...',
+                    titleDisconnected: 'Backend not running, click to see how to start'
+                },
+                subtitle: {
+                    title: 'Subtitle Editor',
+                    description: 'Adjust subtitle styles and preview',
+                    styleSettings: 'Subtitle Style Settings',
+                    fontSize: 'Font Size',
+                    textColor: 'Text Color',
+                    bgColor: 'Background Color',
+                    bgAlpha: 'Background Opacity',
+                    positionY: 'Vertical Position (negative=bottom)',
+                    strokeWidth: 'Stroke Width',
+                    strokeColor: 'Stroke Color',
+                    bold: 'Bold',
+                    shadow: 'Shadow',
+                    lineMaxWidth: 'Max Line Width (auto wrap)',
+                    templateText: 'Template Text',
+                    topTitleText: 'Top Title Text',
+                    topTitlePlaceholder: 'Enter text to display at top',
+                    reload: 'Reload',
+                    saveConfig: 'Save Config',
+                    preview: 'Preview',
+                    previewSubtitle: 'This is subtitle preview text, auto-wrapping enabled',
+                    topTitleDefault: 'Top Title Text',
+                    pendingVideos: 'Pending Videos',
+                    videoCount: '',
+                    noVideos: 'Put videos in videos/translate_raw folder',
+                    startSection: 'After confirming settings, click to start translation workflow',
+                    startProcess: 'Start',
+                    processing: 'Processing...',
+                    configLoaded: 'Config loaded successfully',
+                    loadFailed: 'Load failed',
+                    configSaved: 'Config saved successfully',
+                    saveFailed: 'Save failed',
+                    processRunning: 'Running translation workflow... (Please wait, no real-time output)',
+                    processWaiting: 'Processing, please wait...',
+                    processComplete: 'Process complete!',
+                    processFailed: 'Process failed',
+                    executeFailed: 'Execution failed'
+                }
+            }
+        };
+
+        createApp({
+            setup() {
+                // i18n 狀態
+                const currentLocale = ref(localStorage.getItem('locale') || 'zh');
+
+                const t = (key) => {
+                    const keys = key.split('.');
+                    let result = i18n[currentLocale.value];
+                    for (const k of keys) {
+                        result = result?.[k];
+                    }
+                    return result || key;
+                };
+
+                const toggleLocale = () => {
+                    currentLocale.value = currentLocale.value === 'zh' ? 'en' : 'zh';
+                    localStorage.setItem('locale', currentLocale.value);
+                };
+
+                // 主題
+                const theme = ref(localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
+
+                // 狀態
+                const currentView = ref(localStorage.getItem('currentView') || 'download');
+                const currentProject = ref('translate');
+                const sidebarCollapsed = ref(false);
+                const sidebarOpen = ref(false);
+                const isRunning = ref(false);
+                const progress = ref(0);
+                const progressText = ref('等待執行...');
+                const logs = ref([]);
+                const logContainer = ref(null);
+
+                // 配置
+                const config = ref({
+                    projectRoot: 'C:\\AutoReel',
+                    videoFolder: 'C:\\AutoReel\\videos\\translate_raw',
+                    draftFolder: 'C:\\AutoReel\\翻譯專案',
+                });
+
+                // 統計
+                const stats = ref({
+                    videos: 0,
+                    processed: 0,
+                    drafts: 0,
+                    success: 100,
+                    pending: 0,
+                    errors: 0,
+                });
+
+                // 下載模組狀態
+                const download = ref({
+                    urlInput: '',
+                    queue: [],
+                    history: [],
+                    activeTab: 'queue',
+                    isRunning: false,
+                    isLoading: false,
+                    currentTask: null,
+                    settings: {
+                        download_path: './downloads',
+                        auto_remove: true,
+                        headless_mode: false,
+                    }
+                });
+
+                // Toast 通知
+                const toasts = ref([]);
+                let toastId = 0;
+
+                // 後端連線狀態
+                const backendStatus = ref('disconnected'); // connected, disconnected, connecting
+                const showBackendModal = ref(false);
+                let backendCheckInterval = null;
+
+                // YouTube 模組狀態
+                const youtube = ref({
+                    urlInput: '',
+                    videoInfo: null,
+                    format: 'best',
+                    audioOnly: false,
+                    isLoading: false,
+                    isDownloading: false,
+                    currentTask: null,
+                    history: [],
+                    files: [],
+                    activeTab: 'history',
+                });
+
+                // 字幕編輯器狀態
+                const subtitleConfig = ref({
+                    subtitle_style: {
+                        font_size: 10,
+                        text_color: '#FFFFFF',
+                        background_color: '#000000',
+                        background_alpha: 0.7,
+                        position_y: -0.75,
+                        stroke_width: 2,
+                        stroke_color: '#000000',
+                        bold: true,
+                        shadow: true,
+                        line_max_width: 0.82
+                    }
+                });
+                const subtitleTemplateText = ref('');
+                const subtitleVideos = ref([]);
+                const subtitleStatus = ref('');
+                const subtitleStatusClass = ref('');
+                const subtitleIsRunning = ref(false);
+                const subtitleLogs = ref('');
+                const subtitleLogOutput = ref(null);
+                const subtitlePreviewText = ref('');
+
+                // 翻譯工作流狀態
+                const ts = ref({
+                    videos: [],
+                    results: [],
+                    processingQueue: [],
+                    logs: [],
+                    isRunning: false,
+                    isDownloading: false,
+                    isDragOver: false,
+                    urlInput: '',
+                    total: 0,
+                    completed: 0,
+                    failed: 0,
+                    progressText: '等待操作...',
+                    showLogs: false,
+                    downloadStatus: null,
+                });
+                const fileInput = ref(null);
+                const translateLogContainer = ref(null);
+
+                // 系統狀態
+                const systemStatus = computed(() => {
+                    if (isRunning.value) return 'running';
+                    return 'idle';
+                });
+
+                const statusText = computed(() => {
+                    if (isRunning.value) return '處理中...';
+                    return '就緒';
+                });
+
+                // 方法
+                const selectProject = (project) => {
+                    currentProject.value = project;
+                };
+
+                const executeWorkflow = async () => {
+                    if (isRunning.value) return;
+
+                    isRunning.value = true;
+                    progress.value = 0;
+                    progressText.value = '正在初始化...';
+                    logs.value = [];
+
+                    addLog('info', '[系統] 開始執行工作流...');
+                    addLog('info', '[系統] 當前專案: 翻譯專案');
+
+                    // 模擬執行
+                    for (let i = 0; i <= 100; i += 10) {
+                        await new Promise(r => setTimeout(r, 300));
+                        progress.value = i;
+                        progressText.value = `處理中... ${i}%`;
+
+                        if (i === 30) addLog('info', '[處理] 載入影片檔案...');
+                        if (i === 60) addLog('info', '[處理] 生成草稿...');
+                        if (i === 90) addLog('info', '[處理] 完成輸出...');
+                    }
+
+                    addLog('success', '[完成] 工作流執行成功！');
+                    progressText.value = '執行完成';
+                    isRunning.value = false;
+                };
+
+                const addLog = (type, text) => {
+                    const time = new Date().toLocaleTimeString();
+                    logs.value.push({ type, text: `[${time}] ${text}` });
+                    nextTick(() => {
+                        if (logContainer.value) {
+                            logContainer.value.scrollTop = logContainer.value.scrollHeight;
+                        }
+                    });
+                };
+
+                const clearLogs = () => {
+                    logs.value = [];
+                };
+
+                const openSettings = () => {
+                    currentView.value = 'settings';
+                };
+
+                const openDraftFolder = () => {
+                    alert('開啟草稿資料夾功能需要後端支援');
+                };
+
+                // 主題切換
+                const toggleTheme = () => {
+                    theme.value = theme.value === 'dark' ? 'light' : 'dark';
+                    document.documentElement.dataset.theme = theme.value;
+                    localStorage.setItem('theme', theme.value);
+                    initIcons();
+                };
+
+                // ===== 下載功能 =====
+                const API_BASE = 'http://localhost:8000';
+                let downloadWs = null;
+
+                const showToast = (message, type = 'info', duration = 3000) => {
+                    const id = ++toastId;
+                    toasts.value.push({ id, message, type });
+                    if (duration > 0) {
+                        setTimeout(() => {
+                            toasts.value = toasts.value.filter(t => t.id !== id);
+                        }, duration);
+                    }
+                };
+
+                const removeToast = (id) => {
+                    toasts.value = toasts.value.filter(t => t.id !== id);
+                };
+
+                // 檢查後端狀態
+                const checkBackendStatus = async () => {
+                    try {
+                        const controller = new AbortController();
+                        const timeout = setTimeout(() => controller.abort(), 3000);
+
+                        const res = await fetch(`${API_BASE}/api/download/status`, {
+                            signal: controller.signal
+                        });
+                        clearTimeout(timeout);
+
+                        if (res.ok) {
+                            if (backendStatus.value !== 'connected') {
+                                backendStatus.value = 'connected';
+                                showToast('後端服務已連線', 'success');
+                            }
+                            return true;
+                        }
+                    } catch (e) {
+                        if (backendStatus.value === 'connected') {
+                            backendStatus.value = 'disconnected';
+                            showToast('後端服務已斷線', 'error');
+                        } else if (backendStatus.value !== 'disconnected') {
+                            backendStatus.value = 'disconnected';
+                        }
+                    }
+                    return false;
+                };
+
+                // 重試後端連線
+                const retryBackendConnection = async () => {
+                    backendStatus.value = 'connecting';
+                    showToast('正在嘗試連線...', 'info');
+
+                    const connected = await checkBackendStatus();
+                    if (connected) {
+                        showBackendModal.value = false;
+                        await loadDownloadData();
+                        await loadYoutubeHistory();
+                        await loadTranslateVideos();
+                        connectDownloadWs();
+                    } else {
+                        showToast('連線失敗，請確認後端已啟動', 'error');
+                    }
+                };
+
+                // 取得後端狀態文字
+                const getBackendStatusText = () => {
+                    switch (backendStatus.value) {
+                        case 'connected': return '已連線';
+                        case 'connecting': return '連線中...';
+                        default: return '未連線';
+                    }
+                };
+
+                const getBackendStatusTitle = () => {
+                    switch (backendStatus.value) {
+                        case 'connected': return '後端服務運行中，點擊查看詳情';
+                        case 'connecting': return '正在連線後端服務...';
+                        default: return '後端服務未啟動，點擊查看啟動方式';
+                    }
+                };
+
+                // 複製到剪貼簿
+                const copyToClipboard = async (text) => {
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        showToast('已複製到剪貼簿', 'success');
+                    } catch (e) {
+                        showToast('複製失敗', 'error');
+                    }
+                };
+
+                // ===== 翻譯工作流功能 =====
+                const addTranslateLog = (type, text) => {
+                    const time = new Date().toLocaleTimeString();
+                    ts.value.logs.push({ type, text: `[${time}] ${text}` });
+                    nextTick(() => {
+                        if (translateLogContainer.value) {
+                            translateLogContainer.value.scrollTop = translateLogContainer.value.scrollHeight;
+                        }
+                    });
+                };
+
+                const loadTranslateVideos = async () => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/translate/videos`);
+                        if (res.ok) {
+                            ts.value.videos = await res.json();
+                        }
+                    } catch (e) {
+                        // silently fail if backend not available
+                    }
+                };
+
+                const loadTranslateResults = async () => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/translate/results`);
+                        if (res.ok) {
+                            ts.value.results = await res.json();
+                        }
+                    } catch (e) {
+                        // silently fail
+                    }
+                };
+
+                const startTranslatePipeline = async () => {
+                    if (ts.value.isRunning) return;
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/translate/start`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ force: false })
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            ts.value.isRunning = true;
+                            ts.value.processingQueue = [];
+                            ts.value.completed = 0;
+                            ts.value.failed = 0;
+                            ts.value.progressText = '啟動中...';
+                            ts.value.showLogs = true;
+                            addTranslateLog('info', '[系統] Pipeline 已啟動');
+                            showToast('翻譯 Pipeline 已啟動', 'success');
+                        } else {
+                            showToast(result.message || '啟動失敗', 'warning');
+                        }
+                    } catch (e) {
+                        showToast('啟動失敗: ' + e.message, 'error');
+                    }
+                };
+
+                const handleFileDrop = async (event) => {
+                    ts.value.isDragOver = false;
+                    const files = Array.from(event.dataTransfer.files);
+                    await uploadFiles(files);
+                };
+
+                const triggerFileInput = () => {
+                    if (fileInput.value) fileInput.value.click();
+                };
+
+                const handleFileSelect = async (event) => {
+                    const files = Array.from(event.target.files);
+                    await uploadFiles(files);
+                    event.target.value = '';
+                };
+
+                const uploadFiles = async (files) => {
+                    const allowed = ['.mp4', '.mkv', '.avi', '.mov'];
+                    const validFiles = files.filter(f => {
+                        const ext = '.' + f.name.split('.').pop().toLowerCase();
+                        return allowed.includes(ext);
+                    });
+
+                    if (validFiles.length === 0) {
+                        showToast('不支援的檔案格式', 'warning');
+                        return;
+                    }
+
+                    for (const file of validFiles) {
+                        try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            const res = await fetch(`${API_BASE}/api/translate/upload`, {
+                                method: 'POST',
+                                body: formData
+                            });
+                            const result = await res.json();
+                            if (result.success) {
+                                addTranslateLog('success', `[上傳] ${file.name} (${formatFileSize(file.size)})`);
+                                showToast(`已上傳: ${file.name}`, 'success');
+                            }
+                        } catch (e) {
+                            addTranslateLog('error', `[上傳失敗] ${file.name}: ${e.message}`);
+                            showToast(`上傳失敗: ${file.name}`, 'error');
+                        }
+                    }
+                    await loadTranslateVideos();
+                };
+
+                const downloadFromUrl = async () => {
+                    const url = ts.value.urlInput.trim();
+                    if (!url) return;
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/translate/download-url`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ url, auto_translate: true })
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            ts.value.isDownloading = true;
+                            ts.value.downloadStatus = { url, status: 'starting', progress: 0 };
+                            ts.value.urlInput = '';
+                            addTranslateLog('info', `[下載] 開始下載: ${url}`);
+                            showToast('開始下載...', 'info');
+                        } else {
+                            showToast(result.message || '下載失敗', 'warning');
+                        }
+                    } catch (e) {
+                        showToast('下載失敗: ' + e.message, 'error');
+                    }
+                };
+
+                const deleteTranslateVideo = async (filename) => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/translate/videos/${encodeURIComponent(filename)}`, {
+                            method: 'DELETE'
+                        });
+                        if (res.ok) {
+                            showToast(`已刪除: ${filename}`, 'info');
+                            await loadTranslateVideos();
+                        }
+                    } catch (e) {
+                        showToast('刪除失敗', 'error');
+                    }
+                };
+
+                // 處理翻譯 WebSocket 事件
+                const handleTranslateWsMessage = (msg) => {
+                    const data = msg.data || {};
+
+                    // Helper: ensure video is in processingQueue
+                    const ensureQueueItem = (videoName) => {
+                        let item = ts.value.processingQueue.find(q => q.video === videoName);
+                        if (!item) {
+                            item = { video: videoName, transcribe: 'pending', translate: 'pending', draft: 'pending' };
+                            ts.value.processingQueue.push(item);
+                        }
+                        return item;
+                    };
+
+                    switch (msg.type) {
+                        case 'translate_pipeline_start':
+                            ts.value.isRunning = true;
+                            ts.value.total = data.total || 0;
+                            ts.value.completed = 0;
+                            ts.value.failed = 0;
+                            ts.value.progressText = `處理中 (0/${data.total})`;
+                            addTranslateLog('info', `[Pipeline] 開始處理 ${data.total} 支影片`);
+                            break;
+
+                        case 'translate_transcribe_start': {
+                            const item = ensureQueueItem(data.video);
+                            item.transcribe = 'active';
+                            ts.value.progressText = `辨識中: ${data.video}`;
+                            addTranslateLog('info', `[辨識] 開始: ${data.video}`);
+                            break;
+                        }
+
+                        case 'translate_transcribe_done': {
+                            const item = ensureQueueItem(data.video);
+                            item.transcribe = 'done';
+                            addTranslateLog('success', `[辨識] 完成: ${data.video}`);
+                            break;
+                        }
+
+                        case 'translate_translate_start': {
+                            const item = ensureQueueItem(data.video);
+                            item.translate = 'active';
+                            ts.value.progressText = `翻譯中: ${data.video}`;
+                            addTranslateLog('info', `[翻譯] 開始: ${data.video}`);
+                            break;
+                        }
+
+                        case 'translate_translate_done': {
+                            const item = ensureQueueItem(data.video);
+                            item.translate = 'done';
+                            addTranslateLog('success', `[翻譯] 完成: ${data.video}`);
+                            break;
+                        }
+
+                        case 'translate_draft_start': {
+                            const item = ensureQueueItem(data.video);
+                            item.draft = 'active';
+                            ts.value.progressText = `生成草稿: ${data.video}`;
+                            addTranslateLog('info', `[草稿] 開始: ${data.video}`);
+                            break;
+                        }
+
+                        case 'translate_draft_done': {
+                            const item = ensureQueueItem(data.video);
+                            item.draft = 'done';
+                            addTranslateLog('success', `[草稿] 完成: ${data.video}`);
+                            break;
+                        }
+
+                        case 'translate_video_complete':
+                            ts.value.completed = (data.stats && data.stats.completed) || (ts.value.completed + 1);
+                            ts.value.progressText = `完成 ${ts.value.completed}/${ts.value.total}`;
+                            addTranslateLog('success', `[完成] ${data.video} (${(data.elapsed || 0).toFixed(1)}s)`);
+                            showToast(`完成: ${data.video}`, 'success');
+                            break;
+
+                        case 'translate_video_error': {
+                            const item = ensureQueueItem(data.video);
+                            // Mark current stage as error
+                            if (item.transcribe === 'active') item.transcribe = 'error';
+                            else if (item.translate === 'active') item.translate = 'error';
+                            else if (item.draft === 'active') item.draft = 'error';
+                            ts.value.failed = (data.stats && data.stats.failed) || (ts.value.failed + 1);
+                            addTranslateLog('error', `[失敗] ${data.video}: ${data.error}`);
+                            showToast(`失敗: ${data.video}`, 'error');
+                            break;
+                        }
+
+                        case 'translate_pipeline_done':
+                            ts.value.isRunning = false;
+                            ts.value.progressText = `完成! ${data.success_count || 0} 成功, ${data.failed_count || 0} 失敗`;
+                            addTranslateLog('info', `[Pipeline] 完成! 成功: ${data.success_count || 0}, 失敗: ${data.failed_count || 0}`);
+                            showToast('翻譯 Pipeline 完成', 'success');
+                            // Refresh video list
+                            loadTranslateVideos();
+                            loadTranslateResults();
+                            break;
+
+                        case 'translate_download_progress':
+                            ts.value.downloadStatus = data;
+                            if (data.status === 'completed') {
+                                ts.value.isDownloading = false;
+                                addTranslateLog('success', `[下載] 完成: ${data.filename || data.url}`);
+                                showToast('下載完成', 'success');
+                                // Refresh after a short delay (auto-translate starts)
+                                setTimeout(() => {
+                                    loadTranslateVideos();
+                                    ts.value.downloadStatus = null;
+                                }, 2000);
+                            } else if (data.status === 'failed') {
+                                ts.value.isDownloading = false;
+                                addTranslateLog('error', `[下載失敗] ${data.error || data.url}`);
+                                showToast('下載失敗: ' + (data.error || '未知錯誤'), 'error');
+                                setTimeout(() => { ts.value.downloadStatus = null; }, 3000);
+                            } else if (data.status === 'already_exists') {
+                                ts.value.isDownloading = false;
+                                addTranslateLog('info', `[下載] 已存在: ${data.filename || data.url}`);
+                                setTimeout(() => {
+                                    loadTranslateVideos();
+                                    ts.value.downloadStatus = null;
+                                }, 1000);
+                            }
+                            break;
+                    }
+                };
+
+                // ===== 字幕編輯器功能 =====
+                const hexToRgba = (hex, alpha) => {
+                    const r = parseInt(hex.slice(1, 3), 16);
+                    const g = parseInt(hex.slice(3, 5), 16);
+                    const b = parseInt(hex.slice(5, 7), 16);
+                    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                };
+
+                const subtitlePreviewStyle = computed(() => {
+                    const s = subtitleConfig.value.subtitle_style;
+                    let style = {
+                        fontSize: `${s.font_size * 2}px`,
+                        color: s.text_color,
+                        backgroundColor: hexToRgba(s.background_color, s.background_alpha),
+                        fontWeight: s.bold ? 'bold' : 'normal',
+                        maxWidth: `${s.line_max_width * 100}%`,
+                        wordWrap: 'break-word',
+                        lineHeight: '1.5',
+                        bottom: `${(1 - ((s.position_y + 1) / 2)) * 100}%`
+                    };
+
+                    if (s.shadow) {
+                        style.textShadow = '2px 2px 4px rgba(0,0,0,0.8)';
+                    }
+
+                    if (s.stroke_width > 0) {
+                        style.webkitTextStroke = `${s.stroke_width}px ${s.stroke_color || '#000'}`;
+                        style.paintOrder = 'stroke fill';
+                    }
+
+                    return style;
+                });
+
+                const loadSubtitleConfig = async () => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/config`);
+                        const data = await res.json();
+                        if (data.config) {
+                            subtitleConfig.value = {
+                                ...subtitleConfig.value,
+                                ...data.config,
+                                subtitle_style: {
+                                    ...subtitleConfig.value.subtitle_style,
+                                    ...data.config.subtitle_style
+                                }
+                            };
+                        }
+                        if (data.template_text !== undefined) {
+                            subtitleTemplateText.value = data.template_text;
+                        }
+                        if (data.videos) {
+                            subtitleVideos.value = data.videos;
+                        }
+                        subtitleStatus.value = t('subtitle.configLoaded');
+                        subtitleStatusClass.value = 'success';
+                    } catch (e) {
+                        subtitleStatus.value = `${t('subtitle.loadFailed')}: ${e.message}`;
+                        subtitleStatusClass.value = 'error';
+                    }
+                };
+
+                const saveSubtitleConfig = async () => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/config`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                config: subtitleConfig.value,
+                                template_text: subtitleTemplateText.value
+                            })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            subtitleStatus.value = t('subtitle.configSaved');
+                            subtitleStatusClass.value = 'success';
+                            showToast(t('subtitle.configSaved'), 'success');
+                        } else {
+                            subtitleStatus.value = `${t('subtitle.saveFailed')}: ${data.error}`;
+                            subtitleStatusClass.value = 'error';
+                        }
+                    } catch (e) {
+                        subtitleStatus.value = `${t('subtitle.saveFailed')}: ${e.message}`;
+                        subtitleStatusClass.value = 'error';
+                    }
+                };
+
+                const startSubtitleProcess = async () => {
+                    if (subtitleIsRunning.value) return;
+
+                    // Save config first
+                    await saveSubtitleConfig();
+
+                    subtitleIsRunning.value = true;
+                    subtitleStatus.value = t('subtitle.processRunning');
+                    subtitleStatusClass.value = 'running';
+                    subtitleLogs.value = t('subtitle.processWaiting') + '\n\n';
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/start`, { method: 'POST' });
+                        const text = await res.text();
+
+                        subtitleLogs.value = text;
+
+                        // Auto scroll
+                        await nextTick();
+                        if (subtitleLogOutput.value) {
+                            subtitleLogOutput.value.scrollTop = subtitleLogOutput.value.scrollHeight;
+                        }
+
+                        if (res.ok) {
+                            subtitleStatus.value = t('subtitle.processComplete');
+                            subtitleStatusClass.value = 'success';
+                            showToast(t('subtitle.processComplete'), 'success');
+                        } else {
+                            subtitleStatus.value = t('subtitle.processFailed');
+                            subtitleStatusClass.value = 'error';
+                        }
+                    } catch (e) {
+                        subtitleStatus.value = `${t('subtitle.executeFailed')}: ${e.message}`;
+                        subtitleStatusClass.value = 'error';
+                        subtitleLogs.value = 'Error: ' + e.message;
+                    } finally {
+                        subtitleIsRunning.value = false;
+                        // Refresh video list
+                        loadSubtitleConfig();
+                    }
+                };
+
+                // WebSocket 連接
+                const connectDownloadWs = () => {
+                    if (backendStatus.value === 'disconnected') {
+                        backendStatus.value = 'connecting';
+                    }
+
+                    downloadWs = new WebSocket('ws://localhost:8000/ws');
+
+                    downloadWs.onopen = () => {
+                        console.log('Download WebSocket connected');
+                        backendStatus.value = 'connected';
+                    };
+
+                    downloadWs.onmessage = (event) => {
+                        const msg = JSON.parse(event.data);
+                        handleWsMessage(msg);
+                    };
+
+                    downloadWs.onerror = () => {
+                        console.log('Download WebSocket error');
+                        backendStatus.value = 'disconnected';
+                    };
+
+                    downloadWs.onclose = () => {
+                        console.log('Download WebSocket disconnected');
+                        backendStatus.value = 'disconnected';
+                        // 只有在非刻意斷線時才重連
+                        setTimeout(() => {
+                            if (backendStatus.value === 'disconnected') {
+                                checkBackendStatus().then(connected => {
+                                    if (connected) connectDownloadWs();
+                                });
+                            }
+                        }, 5000);
+                    };
+                };
+
+                const handleWsMessage = (msg) => {
+                    // 翻譯工作流事件
+                    if (msg.type && msg.type.startsWith('translate_')) {
+                        handleTranslateWsMessage(msg);
+                        return;
+                    }
+
+                    // Instagram 下載事件
+                    if (msg.type === 'status_update') {
+                        const data = msg.data;
+                        const item = download.value.queue.find(q => q.id === data.id);
+                        if (item) {
+                            Object.assign(item, data);
+                            if (data.status === 'processing') {
+                                download.value.currentTask = {
+                                    url: data.url,
+                                    progress: data.progress_percent || 0,
+                                    step: data.progress || '處理中...'
+                                };
+                            }
+                            if (data.status === 'completed') {
+                                showToast(`下載完成：${data.filename}`, 'success');
+                                download.value.history.unshift({ ...item, ...data });
+                                if (download.value.settings.auto_remove) {
+                                    download.value.queue = download.value.queue.filter(q => q.id !== item.id);
+                                }
+                            }
+                            if (data.status === 'failed') {
+                                showToast(`下載失敗：${data.error_message}`, 'error');
+                                download.value.history.unshift({ ...item, ...data });
+                                if (download.value.settings.auto_remove) {
+                                    download.value.queue = download.value.queue.filter(q => q.id !== item.id);
+                                }
+                            }
+                        }
+                    }
+                    if (msg.type === 'download_started') {
+                        download.value.isRunning = true;
+                        showToast('開始下載...', 'info');
+                    }
+                    if (msg.type === 'download_finished') {
+                        download.value.isRunning = false;
+                        download.value.currentTask = null;
+                        loadDownloadData();
+                    }
+
+                    // YouTube 下載事件
+                    if (msg.type === 'yt_started') {
+                        youtube.value.isDownloading = true;
+                        youtube.value.currentTask = {
+                            status: 'parsing',
+                            progress: 0,
+                            message: '開始解析影片資訊...'
+                        };
+                        showToast('開始下載 YouTube 影片...', 'info');
+                    }
+                    if (msg.type === 'yt_progress') {
+                        youtube.value.currentTask = msg.data;
+                        // 在關鍵進度點顯示通知
+                        if (msg.data.progress === 0 && msg.data.status === 'downloading') {
+                            showToast('開始下載影片檔案...', 'info');
+                        } else if (msg.data.progress >= 50 && msg.data.progress < 51 && msg.data.status === 'downloading') {
+                            showToast('下載進度已過半！', 'info');
+                        } else if (msg.data.status === 'processing') {
+                            showToast('下載完成，正在處理影片...', 'info');
+                        }
+                    }
+                    if (msg.type === 'yt_completed') {
+                        youtube.value.isDownloading = false;
+                        youtube.value.currentTask = null;
+                        youtube.value.videoInfo = null;
+                        youtube.value.urlInput = '';
+                        showToast(`下載完成：${msg.data.title || msg.data.filename}`, 'success', 5000);
+                        loadYoutubeHistory();
+                    }
+                    if (msg.type === 'yt_error') {
+                        youtube.value.isDownloading = false;
+                        youtube.value.currentTask = null;
+                        showToast(`下載失敗：${msg.data.error}`, 'error', 8000);
+                        loadYoutubeHistory();
+                    }
+                };
+
+                const addToQueue = async () => {
+                    const urls = download.value.urlInput.split('\n').filter(u => u.trim());
+                    if (urls.length === 0) {
+                        showToast('請輸入至少一個網址', 'warning');
+                        return;
+                    }
+
+                    download.value.isLoading = true;
+                    try {
+                        const res = await fetch(`${API_BASE}/api/queue`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ urls })
+                        });
+                        const added = await res.json();
+                        if (added.length > 0) {
+                            download.value.queue.push(...added);
+                            download.value.urlInput = '';
+                            showToast(`已加入 ${added.length} 個網址`, 'success');
+                        } else {
+                            showToast('網址已存在於佇列中', 'warning');
+                        }
+                    } catch (e) {
+                        showToast('加入失敗：' + e.message, 'error');
+                    } finally {
+                        download.value.isLoading = false;
+                    }
+                };
+
+                const removeFromQueue = async (id) => {
+                    try {
+                        await fetch(`${API_BASE}/api/queue/${id}`, { method: 'DELETE' });
+                        download.value.queue = download.value.queue.filter(q => q.id !== id);
+                        showToast('已從佇列移除', 'info');
+                    } catch (e) {
+                        showToast('移除失敗', 'error');
+                    }
+                };
+
+                const startDownload = async () => {
+                    if (download.value.queue.length === 0) {
+                        showToast('佇列是空的', 'warning');
+                        return;
+                    }
+                    try {
+                        const res = await fetch(`${API_BASE}/api/download/start`, { method: 'POST' });
+                        const result = await res.json();
+                        if (!result.success) {
+                            showToast(result.message || '啟動失敗', 'warning');
+                        }
+                    } catch (e) {
+                        showToast('啟動失敗：' + e.message, 'error');
+                    }
+                };
+
+                const stopDownload = async () => {
+                    try {
+                        await fetch(`${API_BASE}/api/download/stop`, { method: 'POST' });
+                        download.value.isRunning = false;
+                        download.value.currentTask = null;
+                        showToast('已停止下載', 'warning');
+                    } catch (e) {
+                        showToast('停止失敗', 'error');
+                    }
+                };
+
+                const clearHistory = async () => {
+                    try {
+                        await fetch(`${API_BASE}/api/history`, { method: 'DELETE' });
+                        download.value.history = [];
+                        showToast('歷史紀錄已清除', 'info');
+                    } catch (e) {
+                        showToast('清除失敗', 'error');
+                    }
+                };
+
+                const retryDownload = async (id) => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/queue/${id}/retry`, { method: 'POST' });
+                        const item = await res.json();
+                        download.value.history = download.value.history.filter(h => h.id !== id);
+                        download.value.queue.push(item);
+                        showToast('已加入重試佇列', 'info');
+                    } catch (e) {
+                        showToast('重試失敗', 'error');
+                    }
+                };
+
+                const loadDownloadData = async () => {
+                    try {
+                        const [queueRes, historyRes, settingsRes, statusRes] = await Promise.all([
+                            fetch(`${API_BASE}/api/queue`),
+                            fetch(`${API_BASE}/api/history`),
+                            fetch(`${API_BASE}/api/settings`),
+                            fetch(`${API_BASE}/api/download/status`)
+                        ]);
+                        download.value.queue = await queueRes.json();
+                        download.value.history = await historyRes.json();
+                        download.value.settings = await settingsRes.json();
+                        const status = await statusRes.json();
+                        download.value.isRunning = status.is_running;
+                    } catch (e) {
+                        console.log('下載模組後端未啟動');
+                    }
+                };
+
+                const getStatusIcon = (status) => {
+                    // 返回 HTML 以便渲染 Lucide 圖標
+                    switch (status) {
+                        case 'pending': return 'clock';
+                        case 'processing': return 'loader-2';
+                        case 'completed': return 'check-circle';
+                        case 'failed': return 'x-circle';
+                        default: return 'help-circle';
+                    }
+                };
+
+                const getStatusText = (item) => {
+                    switch (item.status) {
+                        case 'pending': return '等待中';
+                        case 'processing': return '處理中...';
+                        case 'completed': return item.filename || '完成';
+                        case 'failed': return item.error_message || '失敗';
+                        default: return '';
+                    }
+                };
+
+                const formatUrl = (url) => {
+                    return url.length > 50 ? url.substring(0, 50) + '...' : url;
+                };
+
+                // ===== YouTube 功能 =====
+                const getYoutubeInfo = async () => {
+                    if (!youtube.value.urlInput.trim()) return;
+
+                    youtube.value.isLoading = true;
+                    youtube.value.videoInfo = null;
+
+                    showToast('正在解析 YouTube 網址...', 'info');
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/youtube/info`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ url: youtube.value.urlInput.trim() })
+                        });
+
+                        if (!res.ok) {
+                            const err = await res.json();
+                            throw new Error(err.detail || '解析失敗');
+                        }
+
+                        youtube.value.videoInfo = await res.json();
+                        showToast(`解析成功：${youtube.value.videoInfo.title}`, 'success', 4000);
+                    } catch (e) {
+                        showToast('解析失敗：' + e.message, 'error', 5000);
+                    } finally {
+                        youtube.value.isLoading = false;
+                    }
+                };
+
+                const startYoutubeDownload = async () => {
+                    if (!youtube.value.videoInfo) return;
+
+                    youtube.value.isDownloading = true;
+
+                    // 顯示下載設定資訊
+                    const formatText = youtube.value.audioOnly ? 'MP3 音訊' : `${youtube.value.format} 影片`;
+                    showToast(`準備下載 ${formatText}...`, 'info');
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/youtube/download`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                url: youtube.value.urlInput.trim(),
+                                format: youtube.value.format,
+                                audio_only: youtube.value.audioOnly,
+                            })
+                        });
+
+                        if (!res.ok) {
+                            const err = await res.json();
+                            throw new Error(err.detail || '下載失敗');
+                        }
+
+                        // 初始化進度顯示
+                        youtube.value.currentTask = {
+                            status: 'parsing',
+                            progress: 0,
+                            title: youtube.value.videoInfo.title,
+                            message: '正在準備下載...'
+                        };
+                    } catch (e) {
+                        showToast('下載失敗：' + e.message, 'error', 5000);
+                        youtube.value.isDownloading = false;
+                        youtube.value.currentTask = null;
+                    }
+                };
+
+                const loadYoutubeHistory = async () => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/youtube/history`);
+                        youtube.value.history = await res.json();
+                    } catch (e) {
+                        console.log('載入 YouTube 歷史失敗');
+                    }
+                };
+
+                const loadYoutubeFiles = async () => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/youtube/files`);
+                        youtube.value.files = await res.json();
+                    } catch (e) {
+                        console.log('載入 YouTube 檔案列表失敗');
+                    }
+                };
+
+                const formatDuration = (seconds) => {
+                    if (!seconds) return '未知';
+                    const h = Math.floor(seconds / 3600);
+                    const m = Math.floor((seconds % 3600) / 60);
+                    const s = seconds % 60;
+                    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                    return `${m}:${String(s).padStart(2, '0')}`;
+                };
+
+                const formatViews = (views) => {
+                    if (!views) return '未知';
+                    if (views >= 1000000) return (views / 1000000).toFixed(1) + 'M';
+                    if (views >= 1000) return (views / 1000).toFixed(1) + 'K';
+                    return views.toString();
+                };
+
+                const formatFileSize = (bytes) => {
+                    if (!bytes) return '未知';
+                    if (bytes < 1024) return bytes + ' B';
+                    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+                    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+                };
+
+                // YouTube 狀態輔助函數
+                const getYoutubeStatusIcon = (status) => {
+                    const icons = {
+                        'parsing': 'search',
+                        'downloading': 'download',
+                        'processing': 'cpu',
+                        'completed': 'check-circle',
+                        'failed': 'x-circle'
+                    };
+                    return icons[status] || 'help-circle';
+                };
+
+                const getYoutubeStatusText = (status) => {
+                    const texts = {
+                        'parsing': '解析影片資訊中',
+                        'downloading': '正在下載',
+                        'processing': '正在處理',
+                        'completed': '下載完成',
+                        'failed': '下載失敗'
+                    };
+                    return texts[status] || '未知狀態';
+                };
+
+                const getYoutubeProgressColor = (status) => {
+                    const colors = {
+                        'parsing': 'var(--text-muted)',
+                        'downloading': 'var(--text-secondary)',
+                        'processing': 'var(--text-secondary)',
+                        'completed': 'var(--text-primary)',
+                        'failed': '#ef4444'
+                    };
+                    return colors[status] || 'var(--text-muted)';
+                };
+
+                // 初始化 Lucide 圖標的函數
+                const initIcons = () => {
+                    nextTick(() => {
+                        if (window.lucide) {
+                            lucide.createIcons();
+                        }
+                    });
+                };
+
+                // 載入配置
+                onMounted(async () => {
+                    // 初始化主題
+                    document.documentElement.dataset.theme = theme.value;
+
+                    // 初始化 Lucide 圖標
+                    initIcons();
+
+                    // 載入工作流配置
+                    try {
+                        const res = await fetch('/api/config');
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.project_root) config.value.projectRoot = data.project_root;
+                            if (data.videos_raw_folder) config.value.videoFolder = data.videos_raw_folder;
+                            if (data.jianying_draft_folder) config.value.draftFolder = data.jianying_draft_folder;
+                        }
+                    } catch (e) {
+                        console.log('無法載入配置，使用預設值');
+                    }
+
+                    // 先檢查後端狀態
+                    backendStatus.value = 'connecting';
+                    const isBackendUp = await checkBackendStatus();
+
+                    if (isBackendUp) {
+                        // 後端已啟動，載入數據並連接 WebSocket
+                        await loadDownloadData();
+                        await loadYoutubeHistory();
+                        await loadTranslateVideos();
+                        connectDownloadWs();
+                    } else {
+                        // 後端未啟動，顯示提示
+                        backendStatus.value = 'disconnected';
+                        showToast('後端服務未啟動，YT/IG 下載功能無法使用', 'warning', 5000);
+
+                        // 設定定期檢查（每 10 秒檢查一次）
+                        backendCheckInterval = setInterval(async () => {
+                            if (backendStatus.value === 'disconnected') {
+                                const connected = await checkBackendStatus();
+                                if (connected) {
+                                    clearInterval(backendCheckInterval);
+                                    await loadDownloadData();
+                                    await loadYoutubeHistory();
+                                    await loadTranslateVideos();
+                                    connectDownloadWs();
+                                }
+                            }
+                        }, 10000);
+                    }
+
+                    // 再次初始化圖標（數據載入後）
+                    initIcons();
+                });
+
+                // 監視視圖變化，重新初始化圖標並儲存
+                watch(currentView, (newView) => {
+                    localStorage.setItem('currentView', newView);
+                    nextTick(() => initIcons());
+                    // 當切換到字幕編輯器時載入配置
+                    if (newView === 'subtitle') {
+                        loadSubtitleConfig();
+                    }
+                    // 當切換到工作流時載入影片列表
+                    if (newView === 'workflow') {
+                        loadTranslateVideos();
+                    }
+                });
+
+                // 每次更新後初始化圖標
+                onUpdated(() => {
+                    initIcons();
+                });
+
+                return {
+                    // i18n
+                    t,
+                    currentLocale,
+                    toggleLocale,
+                    // 主題
+                    theme,
+                    toggleTheme,
+                    currentView,
+                    currentProject,
+                    sidebarCollapsed,
+                    sidebarOpen,
+                    isRunning,
+                    progress,
+                    progressText,
+                    logs,
+                    logContainer,
+                    config,
+                    stats,
+                    systemStatus,
+                    statusText,
+                    selectProject,
+                    executeWorkflow,
+                    clearLogs,
+                    openSettings,
+                    openDraftFolder,
+                    // 下載功能
+                    download,
+                    toasts,
+                    showToast,
+                    removeToast,
+                    addToQueue,
+                    removeFromQueue,
+                    startDownload,
+                    stopDownload,
+                    clearHistory,
+                    retryDownload,
+                    getStatusIcon,
+                    getStatusText,
+                    formatUrl,
+                    // YouTube 功能
+                    youtube,
+                    getYoutubeInfo,
+                    startYoutubeDownload,
+                    loadYoutubeHistory,
+                    loadYoutubeFiles,
+                    formatDuration,
+                    formatViews,
+                    formatFileSize,
+                    // YouTube 狀態輔助
+                    getYoutubeStatusIcon,
+                    getYoutubeStatusText,
+                    getYoutubeProgressColor,
+                    // 後端連線狀態
+                    backendStatus,
+                    showBackendModal,
+                    checkBackendStatus,
+                    retryBackendConnection,
+                    getBackendStatusText,
+                    getBackendStatusTitle,
+                    copyToClipboard,
+                    // 翻譯工作流
+                    ts,
+                    fileInput,
+                    translateLogContainer,
+                    startTranslatePipeline,
+                    handleFileDrop,
+                    triggerFileInput,
+                    handleFileSelect,
+                    downloadFromUrl,
+                    deleteTranslateVideo,
+                    loadTranslateVideos,
+                    API_BASE,
+                    // 字幕編輯器
+                    subtitleConfig,
+                    subtitleTemplateText,
+                    subtitleVideos,
+                    subtitleStatus,
+                    subtitleStatusClass,
+                    subtitleIsRunning,
+                    subtitleLogs,
+                    subtitleLogOutput,
+                    subtitlePreviewText,
+                    subtitlePreviewStyle,
+                    loadSubtitleConfig,
+                    saveSubtitleConfig,
+                    startSubtitleProcess,
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

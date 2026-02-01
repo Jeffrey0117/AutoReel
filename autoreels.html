@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoReels - 自動化 IG Reels 創作平台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            /* Swiss Design - 極簡色系 (Dark Theme - Default) */
+            --bg-primary: #030303;
+            --bg-secondary: #0a0a0a;
+            --bg-card: #111111;
+            --bg-card-hover: #1a1a1a;
+
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+
+            --border-default: #27272a;
+            --border-light: #3f3f46;
+
+            --accent: #ffffff;
+
+            /* 間距 */
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-5: 1.25rem;
+            --space-6: 1.5rem;
+            --space-8: 2rem;
+            --space-10: 2.5rem;
+            --space-12: 3rem;
+            --space-16: 4rem;
+            --space-20: 5rem;
+            --space-24: 6rem;
+
+            /* 字體 */
+            --font-sans: 'Inter', 'Noto Sans TC', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        /* Light Theme */
+        [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #fafafa;
+            --bg-card: #f4f4f5;
+            --bg-card-hover: #e4e4e7;
+            --text-primary: #09090b;
+            --text-secondary: #52525b;
+            --text-muted: #a1a1aa;
+            --border-default: #e4e4e7;
+            --border-light: #d4d4d8;
+            --accent: #09090b;
+        }
+
+        /* Light theme header background */
+        [data-theme="light"] .header {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ===== Typography ===== */
+        .label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        /* ===== Container ===== */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--space-6);
+        }
+
+        /* ===== Header ===== */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: var(--space-4) var(--space-6);
+            background: rgba(3, 3, 3, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .header-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            font-weight: 700;
+            font-size: 1.25rem;
+            text-decoration: none;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+        }
+
+        .header-nav {
+            display: flex;
+            align-items: center;
+            gap: var(--space-8);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+        }
+
+        /* Theme & Language Toggle Buttons */
+        .toggle-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            background: transparent;
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .toggle-btn:hover {
+            border-color: var(--border-light);
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            padding: var(--space-3) var(--space-5);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-decoration: none;
+            border: 1px solid var(--border-light);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        .btn-primary {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            border-color: var(--text-primary);
+        }
+
+        .btn-primary:hover {
+            background: transparent;
+            color: var(--text-primary);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+        }
+
+        .btn-lg {
+            padding: var(--space-4) var(--space-8);
+            font-size: 0.9rem;
+        }
+
+        /* ===== Hero Section ===== */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: var(--space-24) var(--space-6);
+            position: relative;
+        }
+
+        .hero-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-16);
+            align-items: center;
+        }
+
+        .hero-content {
+            max-width: 560px;
+        }
+
+        .hero-label {
+            display: inline-block;
+            margin-bottom: var(--space-6);
+            padding-bottom: var(--space-4);
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .hero-title {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: var(--space-6);
+            letter-spacing: -0.03em;
+        }
+
+        .hero-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-10);
+            line-height: 1.7;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: var(--space-4);
+        }
+
+        .hero-visual {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-6);
+        }
+
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-6);
+        }
+
+        .stat-card {
+            padding: var(--space-6);
+            border: 1px solid var(--border-default);
+            background: var(--bg-card);
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            margin-bottom: var(--space-2);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        /* ===== Principles Section ===== */
+        .section {
+            padding: var(--space-24) var(--space-6);
+            border-top: 1px solid var(--border-default);
+        }
+
+        .section-header {
+            margin-bottom: var(--space-16);
+        }
+
+        .section-label {
+            display: block;
+            margin-bottom: var(--space-4);
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: var(--space-4);
+        }
+
+        .section-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            line-height: 1.7;
+        }
+
+        .principles-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-6);
+        }
+
+        .principle-card {
+            padding: var(--space-8);
+            border: 1px solid var(--border-default);
+            background: var(--bg-card);
+            transition: all 0.2s ease;
+        }
+
+        .principle-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-light);
+        }
+
+        .principle-number {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: var(--space-6);
+        }
+
+        .principle-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: var(--space-3);
+            letter-spacing: -0.02em;
+        }
+
+        .principle-desc {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* ===== Steps Section ===== */
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: var(--space-4);
+        }
+
+        .step-card {
+            padding: var(--space-6);
+            border: 1px solid var(--border-default);
+            background: var(--bg-card);
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .step-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-light);
+        }
+
+        .step-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: var(--space-4);
+            color: var(--text-muted);
+        }
+
+        .step-card:hover .step-number {
+            color: var(--text-primary);
+        }
+
+        .step-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto var(--space-4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+
+        .step-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: var(--space-2);
+            letter-spacing: -0.01em;
+        }
+
+        .step-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: var(--space-4);
+        }
+
+        .step-status {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-1);
+            padding: var(--space-1) var(--space-3);
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            border: 1px solid var(--border-default);
+        }
+
+        .step-status.ready {
+            border-color: #22c55e;
+            color: #22c55e;
+        }
+
+        .step-status.coming {
+            border-color: var(--text-muted);
+            color: var(--text-muted);
+        }
+
+        /* ===== Features Section ===== */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-6);
+        }
+
+        .feature-card {
+            padding: var(--space-8);
+            border: 1px solid var(--border-default);
+            background: var(--bg-card);
+            display: flex;
+            gap: var(--space-6);
+            transition: all 0.2s ease;
+        }
+
+        .feature-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-light);
+        }
+
+        .feature-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            min-width: 40px;
+        }
+
+        .feature-content {
+            flex: 1;
+        }
+
+        .feature-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: var(--space-2);
+            letter-spacing: -0.01em;
+        }
+
+        .feature-desc {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* ===== CTA Section ===== */
+        .cta-section {
+            padding: var(--space-24) var(--space-6);
+            border-top: 1px solid var(--border-default);
+            text-align: center;
+        }
+
+        .cta-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .cta-title {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: var(--space-4);
+        }
+
+        .cta-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-10);
+            line-height: 1.7;
+        }
+
+        .cta-form {
+            display: flex;
+            gap: var(--space-3);
+            max-width: 480px;
+            margin: 0 auto var(--space-4);
+        }
+
+        .cta-input {
+            flex: 1;
+            padding: var(--space-4) var(--space-5);
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            font-size: 0.9rem;
+        }
+
+        .cta-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .cta-input:focus {
+            outline: none;
+            border-color: var(--text-primary);
+        }
+
+        .cta-note {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        /* ===== Footer Stats ===== */
+        .footer-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-top: 1px solid var(--border-default);
+        }
+
+        .footer-stat {
+            padding: var(--space-8) var(--space-6);
+            text-align: center;
+            border-right: 1px solid var(--border-default);
+        }
+
+        .footer-stat:last-child {
+            border-right: none;
+        }
+
+        .footer-stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: var(--space-1);
+        }
+
+        .footer-stat-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        /* ===== Footer ===== */
+        .footer {
+            padding: var(--space-8) var(--space-6);
+            border-top: 1px solid var(--border-default);
+        }
+
+        .footer-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-text {
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: var(--space-6);
+        }
+
+        .footer-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.8rem;
+            transition: color 0.2s;
+        }
+
+        .footer-link:hover {
+            color: var(--text-primary);
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 1024px) {
+            .hero-grid {
+                grid-template-columns: 1fr;
+                gap: var(--space-12);
+            }
+            .hero-content {
+                max-width: 100%;
+                text-align: center;
+            }
+            .hero-cta {
+                justify-content: center;
+            }
+            .principles-grid {
+                grid-template-columns: 1fr;
+            }
+            .steps-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            .footer-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .footer-stat:nth-child(2) {
+                border-right: none;
+            }
+            .footer-stat:nth-child(3),
+            .footer-stat:nth-child(4) {
+                border-top: 1px solid var(--border-default);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header-nav {
+                display: none;
+            }
+            .header-actions {
+                display: flex;
+            }
+            .hero {
+                padding: var(--space-20) var(--space-4);
+            }
+            .section {
+                padding: var(--space-16) var(--space-4);
+            }
+            .hero-stats {
+                grid-template-columns: 1fr;
+            }
+            .steps-grid {
+                grid-template-columns: 1fr;
+            }
+            .cta-form {
+                flex-direction: column;
+            }
+            .footer-inner {
+                flex-direction: column;
+                gap: var(--space-6);
+                text-align: center;
+            }
+            .footer-stats {
+                grid-template-columns: 1fr;
+            }
+            .footer-stat {
+                border-right: none;
+                border-bottom: 1px solid var(--border-default);
+            }
+            .footer-stat:last-child {
+                border-bottom: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-inner">
+            <a href="#" class="logo">AutoReels</a>
+            <nav class="header-nav">
+                <a href="#how-it-works" class="nav-link" data-i18n="nav.howItWorks">如何運作</a>
+                <a href="#features" class="nav-link" data-i18n="nav.features">功能特色</a>
+                <a href="app.html" class="nav-link" data-i18n="nav.workbench">工作台</a>
+            </nav>
+            <div class="header-actions">
+                <button class="toggle-btn" id="theme-toggle" title="Toggle theme">
+                    <i data-lucide="sun" id="theme-icon-sun" style="width: 18px; height: 18px; display: none;"></i>
+                    <i data-lucide="moon" id="theme-icon-moon" style="width: 18px; height: 18px;"></i>
+                </button>
+                <button class="toggle-btn" id="lang-toggle" title="Toggle language">EN</button>
+                <a href="app.html" class="btn btn-primary" data-i18n="nav.getStarted">立即開始</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-grid">
+            <div class="hero-content">
+                <span class="label hero-label" data-i18n="hero.label">自動化內容創作</span>
+                <h1 class="hero-title" data-i18n="hero.title">5 步驟建立你的自動化 Reels 帳號</h1>
+                <p class="hero-subtitle" data-i18n="hero.subtitle">
+                    從抓取國外熱門影片、AI 智能翻譯、到排程自動發布
+                    — AutoReels 幫你實現內容創作全自動化
+                </p>
+                <div class="hero-cta">
+                    <a href="app.html" class="btn btn-primary btn-lg" data-i18n="hero.getStarted">開始使用</a>
+                    <a href="#how-it-works" class="btn btn-secondary btn-lg" data-i18n="hero.learnMore">了解更多</a>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="hero-stats">
+                    <div class="stat-card">
+                        <div class="stat-value">5</div>
+                        <div class="stat-label" data-i18n="stats.simpleSteps">簡單步驟</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">90%</div>
+                        <div class="stat-label" data-i18n="stats.timeSaved">節省時間</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">24/7</div>
+                        <div class="stat-label" data-i18n="stats.autoRun">自動運行</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">100%</div>
+                        <div class="stat-label" data-i18n="stats.localRun">本地運行</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="section">
+        <div class="container">
+            <div class="section-header">
+                <span class="label section-label" data-i18n="howItWorks.label">如何運作</span>
+                <h2 class="section-title" data-i18n="howItWorks.title">5 步驟開始自動化</h2>
+                <p class="section-subtitle" data-i18n="howItWorks.subtitle">
+                    不需要任何技術背景，跟著步驟走，輕鬆建立你的自動化 Reels 帳號
+                </p>
+            </div>
+
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">01</div>
+                    <div class="step-icon">
+                        <i data-lucide="user-plus" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <h3 class="step-title" data-i18n="steps.step1.title">創建帳號</h3>
+                    <p class="step-desc" data-i18n="steps.step1.desc">連結你的 Instagram 帳號，設定發布權限</p>
+                    <span class="step-status coming" data-i18n="steps.comingSoon">即將推出</span>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">02</div>
+                    <div class="step-icon">
+                        <i data-lucide="palette" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <h3 class="step-title" data-i18n="steps.step2.title">設定模板</h3>
+                    <p class="step-desc" data-i18n="steps.step2.desc">選擇字幕風格、品牌浮水印、影片比例</p>
+                    <span class="step-status ready" data-i18n="steps.available">可使用</span>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">03</div>
+                    <div class="step-icon">
+                        <i data-lucide="download" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <h3 class="step-title" data-i18n="steps.step3.title">抓取影片</h3>
+                    <p class="step-desc" data-i18n="steps.step3.desc">輸入 YouTube 或 IG 網址，一鍵下載素材</p>
+                    <span class="step-status ready" data-i18n="steps.available">可使用</span>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">04</div>
+                    <div class="step-icon">
+                        <i data-lucide="languages" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <h3 class="step-title" data-i18n="steps.step4.title">AI 翻譯</h3>
+                    <p class="step-desc" data-i18n="steps.step4.desc">Whisper 語音辨識 + GPT 智能翻譯</p>
+                    <span class="step-status ready" data-i18n="steps.available">可使用</span>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">05</div>
+                    <div class="step-icon">
+                        <i data-lucide="send" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <h3 class="step-title" data-i18n="steps.step5.title">排程發布</h3>
+                    <p class="step-desc" data-i18n="steps.step5.desc">設定發布時間，自動上傳到 IG Reels</p>
+                    <span class="step-status coming" data-i18n="steps.comingSoon">即將推出</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="section">
+        <div class="container">
+            <div class="section-header">
+                <span class="label section-label" data-i18n="features.label">功能特色</span>
+                <h2 class="section-title" data-i18n="features.title">為什麼選擇 AutoReels</h2>
+                <p class="section-subtitle" data-i18n="features.subtitle">
+                    專為內容創作者設計，節省時間、提升效率
+                </p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-number">01</div>
+                    <div class="feature-content">
+                        <h3 class="feature-title" data-i18n="features.feature1.title">多平台素材來源</h3>
+                        <p class="feature-desc" data-i18n="features.feature1.desc">支援 YouTube、Instagram Reels、TikTok 等主流平台影片下載</p>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-number">02</div>
+                    <div class="feature-content">
+                        <h3 class="feature-title" data-i18n="features.feature2.title">AI 智能翻譯</h3>
+                        <p class="feature-desc" data-i18n="features.feature2.desc">Whisper 語音辨識 + GPT-4 翻譯，準確度高達 95%</p>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-number">03</div>
+                    <div class="feature-content">
+                        <h3 class="feature-title" data-i18n="features.feature3.title">一鍵套用模板</h3>
+                        <p class="feature-desc" data-i18n="features.feature3.desc">自訂字幕樣式、品牌浮水印，批量套用到所有影片</p>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-number">04</div>
+                    <div class="feature-content">
+                        <h3 class="feature-title" data-i18n="features.feature4.title">智能排程發布</h3>
+                        <p class="feature-desc" data-i18n="features.feature4.desc">設定最佳發布時間，自動上傳到你的 IG 帳號</p>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-number">05</div>
+                    <div class="feature-content">
+                        <h3 class="feature-title" data-i18n="features.feature5.title">數據分析儀表板</h3>
+                        <p class="feature-desc" data-i18n="features.feature5.desc">追蹤影片表現，優化發布策略，提升觸及率</p>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-number">06</div>
+                    <div class="feature-content">
+                        <h3 class="feature-title" data-i18n="features.feature6.title">100% 本地安全</h3>
+                        <p class="feature-desc" data-i18n="features.feature6.desc">本地運行，資料不上傳雲端，保護你的帳號安全</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <div class="cta-content">
+            <span class="label section-label" data-i18n="cta.label">立即開始</span>
+            <h2 class="cta-title" data-i18n="cta.title">準備好自動化你的內容了嗎？</h2>
+            <p class="cta-subtitle" data-i18n="cta.subtitle">
+                加入已經在使用 AutoReels 建立自動化 Reels 帳號的創作者行列
+            </p>
+            <div class="cta-form">
+                <input type="email" class="cta-input" data-i18n-placeholder="cta.emailPlaceholder" placeholder="輸入你的 Email">
+                <button class="btn btn-primary" data-i18n="cta.freeStart">免費開始</button>
+            </div>
+            <p class="cta-note" data-i18n="cta.note">無需信用卡 · 30 秒內開始</p>
+        </div>
+    </section>
+
+    <!-- Footer Stats -->
+    <div class="footer-stats">
+        <div class="footer-stat">
+            <div class="footer-stat-value">2024</div>
+            <div class="footer-stat-label" data-i18n="footerStats.launchYear">上線年份</div>
+        </div>
+        <div class="footer-stat">
+            <div class="footer-stat-value">5</div>
+            <div class="footer-stat-label" data-i18n="footerStats.coreSteps">核心步驟</div>
+        </div>
+        <div class="footer-stat">
+            <div class="footer-stat-value">∞</div>
+            <div class="footer-stat-label" data-i18n="footerStats.unlimited">無限可能</div>
+        </div>
+        <div class="footer-stat">
+            <div class="footer-stat-value">100%</div>
+            <div class="footer-stat-label" data-i18n="footerStats.fullyAutomated">全自動化</div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-inner">
+            <div class="footer-text">© 2024 AutoReels</div>
+            <div class="footer-links">
+                <a href="#" class="footer-link" data-i18n="footer.terms">使用條款</a>
+                <a href="#" class="footer-link" data-i18n="footer.privacy">隱私政策</a>
+                <a href="#" class="footer-link" data-i18n="footer.contact">聯絡我們</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // ===== i18n Translations =====
+        const translations = {
+            zh: {
+                nav: {
+                    howItWorks: '如何運作',
+                    features: '功能特色',
+                    workbench: '工作台',
+                    getStarted: '立即開始'
+                },
+                hero: {
+                    label: '自動化內容創作',
+                    title: '5 步驟建立你的自動化 Reels 帳號',
+                    subtitle: '從抓取國外熱門影片、AI 智能翻譯、到排程自動發布 — AutoReels 幫你實現內容創作全自動化',
+                    getStarted: '開始使用',
+                    learnMore: '了解更多'
+                },
+                stats: {
+                    simpleSteps: '簡單步驟',
+                    timeSaved: '節省時間',
+                    autoRun: '自動運行',
+                    localRun: '本地運行'
+                },
+                howItWorks: {
+                    label: '如何運作',
+                    title: '5 步驟開始自動化',
+                    subtitle: '不需要任何技術背景，跟著步驟走，輕鬆建立你的自動化 Reels 帳號'
+                },
+                steps: {
+                    step1: {
+                        title: '創建帳號',
+                        desc: '連結你的 Instagram 帳號，設定發布權限'
+                    },
+                    step2: {
+                        title: '設定模板',
+                        desc: '選擇字幕風格、品牌浮水印、影片比例'
+                    },
+                    step3: {
+                        title: '抓取影片',
+                        desc: '輸入 YouTube 或 IG 網址，一鍵下載素材'
+                    },
+                    step4: {
+                        title: 'AI 翻譯',
+                        desc: 'Whisper 語音辨識 + GPT 智能翻譯'
+                    },
+                    step5: {
+                        title: '排程發布',
+                        desc: '設定發布時間，自動上傳到 IG Reels'
+                    },
+                    available: '可使用',
+                    comingSoon: '即將推出'
+                },
+                features: {
+                    label: '功能特色',
+                    title: '為什麼選擇 AutoReels',
+                    subtitle: '專為內容創作者設計，節省時間、提升效率',
+                    feature1: {
+                        title: '多平台素材來源',
+                        desc: '支援 YouTube、Instagram Reels、TikTok 等主流平台影片下載'
+                    },
+                    feature2: {
+                        title: 'AI 智能翻譯',
+                        desc: 'Whisper 語音辨識 + GPT-4 翻譯，準確度高達 95%'
+                    },
+                    feature3: {
+                        title: '一鍵套用模板',
+                        desc: '自訂字幕樣式、品牌浮水印，批量套用到所有影片'
+                    },
+                    feature4: {
+                        title: '智能排程發布',
+                        desc: '設定最佳發布時間，自動上傳到你的 IG 帳號'
+                    },
+                    feature5: {
+                        title: '數據分析儀表板',
+                        desc: '追蹤影片表現，優化發布策略，提升觸及率'
+                    },
+                    feature6: {
+                        title: '100% 本地安全',
+                        desc: '本地運行，資料不上傳雲端，保護你的帳號安全'
+                    }
+                },
+                cta: {
+                    label: '立即開始',
+                    title: '準備好自動化你的內容了嗎？',
+                    subtitle: '加入已經在使用 AutoReels 建立自動化 Reels 帳號的創作者行列',
+                    emailPlaceholder: '輸入你的 Email',
+                    freeStart: '免費開始',
+                    note: '無需信用卡 · 30 秒內開始'
+                },
+                footerStats: {
+                    launchYear: '上線年份',
+                    coreSteps: '核心步驟',
+                    unlimited: '無限可能',
+                    fullyAutomated: '全自動化'
+                },
+                footer: {
+                    terms: '使用條款',
+                    privacy: '隱私政策',
+                    contact: '聯絡我們'
+                }
+            },
+            en: {
+                nav: {
+                    howItWorks: 'How It Works',
+                    features: 'Features',
+                    workbench: 'Workbench',
+                    getStarted: 'Get Started'
+                },
+                hero: {
+                    label: 'Automated Content Creation',
+                    title: '5 Steps to Build Your Automated Reels Account',
+                    subtitle: 'From fetching trending videos, AI translation, to scheduled publishing — AutoReels helps you automate content creation',
+                    getStarted: 'Get Started',
+                    learnMore: 'Learn More'
+                },
+                stats: {
+                    simpleSteps: 'Simple Steps',
+                    timeSaved: 'Time Saved',
+                    autoRun: 'Auto Running',
+                    localRun: 'Local Run'
+                },
+                howItWorks: {
+                    label: 'How It Works',
+                    title: '5 Steps to Start Automation',
+                    subtitle: 'No technical background needed, follow the steps to easily build your automated Reels account'
+                },
+                steps: {
+                    step1: {
+                        title: 'Create Account',
+                        desc: 'Connect your Instagram account and set publishing permissions'
+                    },
+                    step2: {
+                        title: 'Set Template',
+                        desc: 'Choose subtitle style, brand watermark, video ratio'
+                    },
+                    step3: {
+                        title: 'Fetch Videos',
+                        desc: 'Enter YouTube or IG URL, one-click download'
+                    },
+                    step4: {
+                        title: 'AI Translation',
+                        desc: 'Whisper speech recognition + GPT translation'
+                    },
+                    step5: {
+                        title: 'Schedule Publish',
+                        desc: 'Set publish time, auto upload to IG Reels'
+                    },
+                    available: 'Available',
+                    comingSoon: 'Coming Soon'
+                },
+                features: {
+                    label: 'Features',
+                    title: 'Why Choose AutoReels',
+                    subtitle: 'Designed for content creators, save time and boost efficiency',
+                    feature1: {
+                        title: 'Multi-Platform Sources',
+                        desc: 'Support YouTube, Instagram Reels, TikTok and other mainstream platforms'
+                    },
+                    feature2: {
+                        title: 'AI Smart Translation',
+                        desc: 'Whisper speech recognition + GPT-4 translation, up to 95% accuracy'
+                    },
+                    feature3: {
+                        title: 'One-Click Template',
+                        desc: 'Custom subtitle styles, brand watermarks, batch apply to all videos'
+                    },
+                    feature4: {
+                        title: 'Smart Scheduling',
+                        desc: 'Set optimal publish time, auto upload to your IG account'
+                    },
+                    feature5: {
+                        title: 'Analytics Dashboard',
+                        desc: 'Track video performance, optimize strategy, boost reach'
+                    },
+                    feature6: {
+                        title: '100% Local & Secure',
+                        desc: 'Runs locally, no cloud upload, protect your account security'
+                    }
+                },
+                cta: {
+                    label: 'Get Started',
+                    title: 'Ready to Automate Your Content?',
+                    subtitle: 'Join creators who are already using AutoReels to build automated Reels accounts',
+                    emailPlaceholder: 'Enter your Email',
+                    freeStart: 'Start Free',
+                    note: 'No credit card required · Start in 30 seconds'
+                },
+                footerStats: {
+                    launchYear: 'Launch Year',
+                    coreSteps: 'Core Steps',
+                    unlimited: 'Unlimited',
+                    fullyAutomated: 'Fully Automated'
+                },
+                footer: {
+                    terms: 'Terms of Service',
+                    privacy: 'Privacy Policy',
+                    contact: 'Contact Us'
+                }
+            }
+        };
+
+        // ===== Theme System =====
+        const initTheme = () => {
+            const saved = localStorage.getItem('theme');
+            const system = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            const theme = saved || system;
+            document.documentElement.dataset.theme = theme;
+            updateThemeIcon(theme);
+        };
+
+        const toggleTheme = () => {
+            const current = document.documentElement.dataset.theme;
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.dataset.theme = next;
+            localStorage.setItem('theme', next);
+            updateThemeIcon(next);
+        };
+
+        const updateThemeIcon = (theme) => {
+            const sunIcon = document.getElementById('theme-icon-sun');
+            const moonIcon = document.getElementById('theme-icon-moon');
+            if (theme === 'dark') {
+                sunIcon.style.display = 'none';
+                moonIcon.style.display = 'block';
+            } else {
+                sunIcon.style.display = 'block';
+                moonIcon.style.display = 'none';
+            }
+        };
+
+        // ===== i18n System =====
+        let currentLang = localStorage.getItem('locale') || 'zh';
+
+        const t = (key) => {
+            const keys = key.split('.');
+            let result = translations[currentLang];
+            for (const k of keys) {
+                result = result?.[k];
+            }
+            return result || key;
+        };
+
+        const setLocale = (locale) => {
+            currentLang = locale;
+            localStorage.setItem('locale', locale);
+            applyTranslations();
+            updateLangButton();
+        };
+
+        const toggleLocale = () => {
+            const next = currentLang === 'zh' ? 'en' : 'zh';
+            setLocale(next);
+        };
+
+        const updateLangButton = () => {
+            const langBtn = document.getElementById('lang-toggle');
+            langBtn.textContent = currentLang === 'zh' ? 'EN' : '中';
+        };
+
+        const applyTranslations = () => {
+            // Apply text content translations
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                const translation = t(key);
+                if (translation && translation !== key) {
+                    el.textContent = translation;
+                }
+            });
+
+            // Apply placeholder translations
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                const translation = t(key);
+                if (translation && translation !== key) {
+                    el.placeholder = translation;
+                }
+            });
+
+            // Update document title
+            document.title = currentLang === 'zh'
+                ? 'AutoReels - 自動化 IG Reels 創作平台'
+                : 'AutoReels - Automated IG Reels Creation Platform';
+        };
+
+        // ===== Initialize =====
+        // Initialize theme first (before DOM loads icons)
+        initTheme();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Lucide icons
+            lucide.createIcons();
+
+            // Update theme icon after Lucide initialization
+            updateThemeIcon(document.documentElement.dataset.theme || 'dark');
+
+            // Initialize language
+            updateLangButton();
+            applyTranslations();
+
+            // Event listeners
+            document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+            document.getElementById('lang-toggle').addEventListener('click', toggleLocale);
+
+            // Smooth scroll for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

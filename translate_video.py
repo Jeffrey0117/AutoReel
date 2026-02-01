@@ -122,16 +122,20 @@ class TranscriptionPipeline:
     While Video 1 is translating, Video 2 can start transcribing.
     """
 
-    def __init__(self, workflow: 'TranslationWorkflow', config: dict):
+    def __init__(self, workflow: 'TranslationWorkflow', config: dict,
+                 progress_callback: Optional[Callable[[str, dict], None]] = None):
         """
         Initialize the pipeline.
 
         Args:
             workflow: The TranslationWorkflow instance
             config: Pipeline configuration dict
+            progress_callback: Optional callback(event_type, data) for progress reporting.
+                When provided, tqdm progress bars are skipped.
         """
         self.workflow = workflow
         self.config = config
+        self.progress_callback = progress_callback
 
         # Worker configuration
         self.translate_workers = config.get("translate_workers", 4)
@@ -165,6 +169,14 @@ class TranscriptionPipeline:
             "translated": 0,
             "drafts_generated": 0
         }
+
+    def _notify(self, event: str, data: dict = None):
+        """Send progress notification via callback if available."""
+        if self.progress_callback:
+            try:
+                self.progress_callback(event, data or {})
+            except Exception:
+                pass
 
     def _create_progress_bars(self, total: int) -> Dict[str, Any]:
         """Create progress bars for each stage"""
@@ -230,6 +242,12 @@ class TranscriptionPipeline:
                 video_name = task.video_name
                 subtitle_json = self.workflow.subtitle_folder / f"{video_name}.json"
 
+                self._notify("transcribe_start", {
+                    "video": video_name,
+                    "total": self.stats["total"],
+                    "completed": self.stats["transcribed"]
+                })
+
                 # Check if we should skip transcription
                 if not force and subtitle_json.exists():
                     print(f"\n[Pipeline] Loading existing subtitles for: {video_name}")
@@ -252,6 +270,12 @@ class TranscriptionPipeline:
                     self.progress_bars["transcribe"].update(1)
                     self.progress_bars["transcribe"].set_postfix(current=video_name)
 
+                self._notify("transcribe_done", {
+                    "video": video_name,
+                    "total": self.stats["total"],
+                    "completed": self.stats["transcribed"]
+                })
+
                 # Move to translation queue
                 self.translation_queue.put(task)
 
@@ -269,6 +293,12 @@ class TranscriptionPipeline:
 
     def _translate_single(self, task: PipelineTask) -> bool:
         """Translate a single task with retry logic"""
+        self._notify("translate_start", {
+            "video": task.video_name,
+            "total": self.stats["total"],
+            "completed": self.stats["translated"]
+        })
+
         # 檢查是否已經翻譯過（避免浪費 API 額度）
         already_translated = all(
             entry.text_translated and entry.text_translated.strip()
@@ -341,6 +371,12 @@ class TranscriptionPipeline:
                         self.progress_bars["translate"].update(1)
                         self.progress_bars["translate"].set_postfix(current=task.video_name)
 
+                    self._notify("translate_done", {
+                        "video": task.video_name,
+                        "total": self.stats["total"],
+                        "completed": self.stats["translated"]
+                    })
+
                     # Move to draft generation queue
                     self.draft_queue.put(task)
 
@@ -365,6 +401,12 @@ class TranscriptionPipeline:
 
     def _generate_draft_single(self, task: PipelineTask, force: bool = False) -> Optional[str]:
         """Generate draft for a single task with retry logic"""
+        self._notify("draft_start", {
+            "video": task.video_name,
+            "total": self.stats["total"],
+            "completed": self.stats["drafts_generated"]
+        })
+
         for attempt in range(self.max_retries):
             try:
                 task.status = TaskStatus.GENERATING_DRAFT
@@ -474,6 +516,18 @@ class TranscriptionPipeline:
                             time=f"{elapsed:.1f}s"
                         )
 
+                    self._notify("draft_done", {
+                        "video": task.video_name,
+                        "total": self.stats["total"],
+                        "completed": self.stats["drafts_generated"]
+                    })
+                    self._notify("video_complete", {
+                        "video": task.video_name,
+                        "draft": draft_name,
+                        "elapsed": task.elapsed_time(),
+                        "stats": dict(self.stats)
+                    })
+
                     print(f"\n[Pipeline] Completed: {task.video_name} ({task.elapsed_time():.1f}s)")
 
             except Exception as e:
@@ -493,6 +547,12 @@ class TranscriptionPipeline:
 
         if self.progress_bars:
             self.progress_bars["overall"].update(1)
+
+        self._notify("video_error", {
+            "video": task.video_name,
+            "error": error_msg,
+            "stats": dict(self.stats)
+        })
 
         print(f"\n[Pipeline] FAILED: {task.video_name}")
         print(f"   Error: {error_msg}")
@@ -521,8 +581,15 @@ class TranscriptionPipeline:
         print(f"   Draft workers: {self.draft_workers}")
         print(f"{'='*60}\n")
 
-        # Create progress bars
-        self.progress_bars = self._create_progress_bars(total)
+        self._notify("pipeline_start", {
+            "total": total,
+            "translate_workers": self.translate_workers,
+            "draft_workers": self.draft_workers
+        })
+
+        # Create progress bars (skip when using callback)
+        if not self.progress_callback:
+            self.progress_bars = self._create_progress_bars(total)
 
         # Add all videos to the queue
         for video_path in video_files:
@@ -595,6 +662,12 @@ class TranscriptionPipeline:
         print(f"   Translated: {self.stats['translated']}")
         print(f"   Drafts generated: {self.stats['drafts_generated']}")
         print(f"{'='*60}\n")
+
+        self._notify("pipeline_done", {
+            "stats": dict(self.stats),
+            "success_count": len(success),
+            "failed_count": len(failed)
+        })
 
         # 如果有失敗的影片，生成失敗清單
         if failed:
