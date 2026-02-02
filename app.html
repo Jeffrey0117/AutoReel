@@ -1323,6 +1323,24 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            cursor: pointer;
+            padding: var(--space-1) var(--space-2);
+            border: 1px solid transparent;
+            transition: border-color 150ms ease;
+        }
+
+        .video-list-name:hover {
+            border-color: var(--border-default);
+        }
+
+        .video-rename-input {
+            flex: 1;
+            font-size: var(--text-sm);
+            color: var(--text-primary);
+            background: var(--bg-primary);
+            border: 1px solid var(--text-primary);
+            padding: var(--space-1) var(--space-2);
+            outline: none;
         }
 
         .video-list-size {
@@ -1546,7 +1564,7 @@
                             <div class="progress-bar" :style="{ width: (ts.downloadStatus.progress || 0) + '%' }"></div>
                         </div>
                         <div style="margin-top: 6px; font-size: var(--text-xs); color: var(--text-muted);">
-                            {{ ts.downloadStatus.status === 'completed' ? '下載完成，開始翻譯...' : ts.downloadStatus.filename || ts.downloadStatus.status }}
+                            {{ ts.downloadStatus.status === 'completed' ? '下載完成，請改名後開始翻譯' : ts.downloadStatus.filename || ts.downloadStatus.status }}
                         </div>
                     </div>
 
@@ -1621,7 +1639,18 @@
                             沒有影片。拖拉上傳或貼網址下載
                         </div>
                         <div v-for="video in ts.videos" :key="video.filename" class="video-list-item">
-                            <span class="video-list-name" :title="video.filename">{{ video.filename }}</span>
+                            <!-- 改名模式 -->
+                            <input v-if="ts.editingVideo === video.filename"
+                                   class="video-rename-input"
+                                   v-model="ts.editingName"
+                                   @keyup.enter="renameTranslateVideo(video.filename)"
+                                   @keyup.escape="ts.editingVideo = null"
+                                   @blur="renameTranslateVideo(video.filename)">
+                            <!-- 正常顯示 (點擊進入改名) -->
+                            <span v-else
+                                  class="video-list-name"
+                                  :title="video.filename + ' (點擊改名)'"
+                                  @click="startRename(video)">{{ video.filename }}</span>
                             <span class="video-list-size">{{ formatFileSize(video.size) }}</span>
                             <span class="badge" :class="'badge-' + video.status">{{ video.status }}</span>
                             <div class="video-list-actions">
@@ -1826,19 +1855,160 @@
                     </div>
                 </div>
 
-                <!-- Social -->
+                <!-- Social / IG Caption Generator -->
                 <div v-if="currentView === 'social'">
                     <div class="workflow-header">
                         <div>
-                            <h1 class="workflow-title">社群工具</h1>
-                            <p class="workflow-subtitle">社群媒體內容產生工具</p>
+                            <h1 class="workflow-title">IG 文案產生器</h1>
+                            <p class="workflow-subtitle">AI 學習你的風格，自動生成影片文案</p>
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <button class="btn btn-primary" @click="igGenerateAll" :disabled="ig.isGenerating || ig.drafts.length === 0">
+                                <i data-lucide="zap" style="width:16px;height:16px;"></i>
+                                {{ ig.isGenerating ? '生成中...' : '全部生成' }}
+                            </button>
                         </div>
                     </div>
-                    <div class="card">
-                        <div class="card-icon social"><i data-lucide="instagram" style="width:28px;height:28px;"></i></div>
-                        <h3 class="project-title">IG 文案產生器</h3>
-                        <p class="project-desc">快速產生 Instagram 貼文文案</p>
-                        <button class="btn btn-primary" style="margin-top: 16px;" onclick="alert('開發中')">開啟工具</button>
+
+                    <!-- Batch progress bar -->
+                    <div v-if="ig.isGenerating" class="card" style="margin-bottom: 16px; padding: 16px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="font-size: 0.875rem; color: var(--text-secondary);">{{ ig.progressText }}</span>
+                            <span style="font-size: 0.875rem; color: var(--text-primary);">{{ ig.batchCompleted + ig.batchFailed }}/{{ ig.batchTotal }}</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" :style="{ width: (ig.batchTotal > 0 ? ((ig.batchCompleted + ig.batchFailed) / ig.batchTotal * 100) : 0) + '%', background: 'var(--text-primary)' }"></div>
+                        </div>
+                        <div v-if="ig.batchFailed > 0" style="margin-top: 4px; font-size: 0.75rem; color: #ef4444;">{{ ig.batchFailed }} 篇失敗</div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div style="display: flex; gap: 0; margin-bottom: 20px; border-bottom: 1px solid var(--border-default);">
+                        <button
+                            v-for="tab in [{id:'examples',label:'風格範例'},{id:'drafts',label:'生成文案'},{id:'captions',label:'已生成'},{id:'published',label:'已發布'}]"
+                            :key="tab.id"
+                            @click="ig.activeTab = tab.id"
+                            style="padding: 10px 20px; font-size: 0.875rem; cursor: pointer; border: none; background: none; color: var(--text-muted); border-bottom: 2px solid transparent; transition: all 0.2s;"
+                            :style="ig.activeTab === tab.id ? { color: 'var(--text-primary)', borderBottomColor: 'var(--text-primary)', fontWeight: 600 } : {}"
+                        >
+                            {{ tab.label }}
+                            <span v-if="tab.id === 'captions' && ig.captions.filter(c => !c.published).length > 0" style="margin-left: 4px; background: var(--bg-card-hover); padding: 1px 6px; border-radius: 10px; font-size: 0.75rem;">{{ ig.captions.filter(c => !c.published).length }}</span>
+                            <span v-if="tab.id === 'published' && ig.captions.filter(c => c.published).length > 0" style="margin-left: 4px; background: var(--bg-card-hover); padding: 1px 6px; border-radius: 10px; font-size: 0.75rem;">{{ ig.captions.filter(c => c.published).length }}</span>
+                        </button>
+                    </div>
+
+                    <!-- Examples Tab -->
+                    <div v-if="ig.activeTab === 'examples'">
+                        <div class="card" style="margin-bottom: 16px;" v-for="(example, idx) in ig.examples" :key="idx">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <pre style="flex: 1; white-space: pre-wrap; word-break: break-word; font-family: inherit; margin: 0; font-size: 0.875rem; line-height: 1.6; color: var(--text-secondary);">{{ example }}</pre>
+                                <button class="btn btn-secondary" style="margin-left: 12px; padding: 6px 12px; font-size: 0.75rem; flex-shrink: 0;" @click="igDeleteExample(idx)">
+                                    <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div v-if="ig.examples.length === 0" class="card" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                            尚無範例，請貼上你的 IG 文案作為風格參考
+                        </div>
+                        <div class="card" style="margin-top: 16px;">
+                            <textarea
+                                v-model="ig.newExample"
+                                placeholder="貼上你的 IG 文案範例..."
+                                style="width: 100%; min-height: 120px; background: var(--bg-page); border: 1px solid var(--border-default); border-radius: 8px; padding: 12px; color: var(--text-primary); font-size: 0.875rem; resize: vertical; font-family: inherit;"
+                            ></textarea>
+                            <button class="btn btn-primary" style="margin-top: 12px;" @click="igAddExample" :disabled="!ig.newExample.trim()">
+                                <i data-lucide="plus" style="width:16px;height:16px;"></i> 新增範例
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Drafts Tab -->
+                    <div v-if="ig.activeTab === 'drafts'">
+                        <div v-if="ig.drafts.length === 0" class="card" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                            找不到翻譯專案草稿，請先完成翻譯工作流
+                        </div>
+                        <div class="card" style="margin-bottom: 8px; padding: 14px 16px;" v-for="draft in ig.drafts" :key="draft">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.875rem; color: var(--text-primary);">{{ draft }}</span>
+                                <button
+                                    class="btn btn-primary"
+                                    style="padding: 6px 16px; font-size: 0.8rem;"
+                                    @click="igGenerateSingle(draft)"
+                                    :disabled="ig.isGenerating || ig.generatingDraft === draft"
+                                >
+                                    <i data-lucide="sparkles" style="width:14px;height:14px;"></i>
+                                    {{ ig.generatingDraft === draft ? '生成中...' : '生成' }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Captions Tab -->
+                    <!-- 已生成 Tab（只顯示未發布） -->
+                    <div v-if="ig.activeTab === 'captions'">
+                        <div v-if="ig.captions.filter(c => !c.published).length === 0" class="card" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                            沒有待發布的文案
+                        </div>
+                        <template v-for="cap in ig.captions" :key="cap.video_name">
+                        <div v-if="!cap.published" class="card" style="margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-weight: 600; color: var(--text-primary);">{{ cap.video_name }}</span>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" @click="igCopyCaption(cap.content)">
+                                        <i data-lucide="copy" style="width:13px;height:13px;"></i> 複製
+                                    </button>
+                                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem; color: #22c55e;" @click="igTogglePublish(cap)" title="標記為已發布">
+                                        <i data-lucide="check" style="width:13px;height:13px;"></i> 發布
+                                    </button>
+                                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem; color: #ef4444;" @click="igDeleteCaption(cap.video_name)">
+                                        <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-if="ig.editingCaption === cap.video_name">
+                                <textarea
+                                    v-model="ig.editingText"
+                                    style="width: 100%; min-height: 150px; background: var(--bg-page); border: 1px solid var(--border-default); border-radius: 8px; padding: 12px; color: var(--text-primary); font-size: 0.85rem; resize: vertical; font-family: inherit; line-height: 1.6;"
+                                ></textarea>
+                                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                    <button class="btn btn-primary" style="padding: 6px 14px; font-size: 0.8rem;" @click="igSaveCaption(cap.video_name)">儲存</button>
+                                    <button class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.8rem;" @click="ig.editingCaption = null">取消</button>
+                                </div>
+                            </div>
+                            <pre
+                                v-else
+                                @dblclick="igStartEditCaption(cap)"
+                                style="white-space: pre-wrap; word-break: break-word; font-family: inherit; margin: 0; font-size: 0.85rem; line-height: 1.6; color: var(--text-secondary); cursor: pointer; padding: 8px; border-radius: 6px; transition: background 0.15s;"
+                                title="雙擊編輯"
+                                onmouseover="this.style.background='var(--bg-card-hover)'"
+                                onmouseout="this.style.background='transparent'"
+                            >{{ cap.content }}</pre>
+                            <div style="margin-top: 6px; font-size: 0.7rem; color: var(--text-muted);">{{ cap.path }}</div>
+                        </div>
+                        </template>
+                    </div>
+
+                    <!-- 已發布 Tab -->
+                    <div v-if="ig.activeTab === 'published'">
+                        <div v-if="ig.captions.filter(c => c.published).length === 0" class="card" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                            還沒有已發布的文案
+                        </div>
+                        <template v-for="cap in ig.captions" :key="'pub-' + cap.video_name">
+                        <div v-if="cap.published" class="card" style="margin-bottom: 8px; padding: 14px 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.875rem; color: var(--text-secondary);">{{ cap.video_name }}</span>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.7rem;" @click="igCopyCaption(cap.content)">
+                                        <i data-lucide="copy" style="width:12px;height:12px;"></i> 複製
+                                    </button>
+                                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.7rem;" @click="igTogglePublish(cap)">退回</button>
+                                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.7rem; color: #ef4444;" @click="igDeleteCaption(cap.video_name)">
+                                        <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        </template>
                     </div>
                 </div>
 
@@ -2248,6 +2418,13 @@
                         <i data-lucide="captions" style="width:24px;height:24px;"></i>
                     </div>
                     <span class="bottom-nav-label">{{ t('nav.subtitle') }}</span>
+                </div>
+
+                <div class="bottom-nav-item" :class="{ active: currentView === 'social' }" @click="currentView = 'social'">
+                    <div class="bottom-nav-icon">
+                        <i data-lucide="pen-line" style="width:24px;height:24px;"></i>
+                    </div>
+                    <span class="bottom-nav-label">IG文案</span>
                 </div>
 
                 <div class="bottom-nav-item" :class="{ active: currentView === 'settings' }" @click="currentView = 'settings'">
@@ -2756,6 +2933,23 @@
                 const subtitleLogOutput = ref(null);
                 const subtitlePreviewText = ref('');
 
+                // IG 文案產生器狀態
+                const ig = ref({
+                    examples: [],
+                    drafts: [],
+                    captions: [],
+                    activeTab: 'captions',
+                    newExample: '',
+                    isGenerating: false,
+                    generatingDraft: null,
+                    batchTotal: 0,
+                    batchCompleted: 0,
+                    batchFailed: 0,
+                    progressText: '',
+                    editingCaption: null,
+                    editingText: '',
+                });
+
                 // 翻譯工作流狀態
                 const ts = ref({
                     videos: [],
@@ -2772,6 +2966,8 @@
                     progressText: '等待操作...',
                     showLogs: false,
                     downloadStatus: null,
+                    editingVideo: null,
+                    editingName: '',
                 });
                 const fileInput = ref(null);
                 const translateLogContainer = ref(null);
@@ -3088,6 +3284,51 @@
                     }
                 };
 
+                const startRename = (video) => {
+                    if (ts.value.isRunning) return;
+                    // Extract name without extension
+                    const dotIdx = video.filename.lastIndexOf('.');
+                    ts.value.editingVideo = video.filename;
+                    ts.value.editingName = dotIdx > 0 ? video.filename.substring(0, dotIdx) : video.filename;
+                    nextTick(() => {
+                        const inputs = document.querySelectorAll('.video-rename-input');
+                        if (inputs.length > 0) {
+                            inputs[inputs.length - 1].focus();
+                            inputs[inputs.length - 1].select();
+                        }
+                    });
+                };
+
+                const renameTranslateVideo = async (oldFilename) => {
+                    const newName = ts.value.editingName.trim();
+                    ts.value.editingVideo = null;
+
+                    if (!newName) return;
+
+                    // Check if name actually changed
+                    const dotIdx = oldFilename.lastIndexOf('.');
+                    const oldName = dotIdx > 0 ? oldFilename.substring(0, dotIdx) : oldFilename;
+                    if (newName === oldName) return;
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/translate/videos/${encodeURIComponent(oldFilename)}/rename`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ new_name: newName })
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            showToast(`已改名: ${result.new_filename}`, 'success');
+                            addTranslateLog('info', `[改名] ${oldFilename} → ${result.new_filename}`);
+                            await loadTranslateVideos();
+                        } else {
+                            showToast(result.detail || result.error || '改名失敗', 'error');
+                        }
+                    } catch (e) {
+                        showToast('改名失敗: ' + e.message, 'error');
+                    }
+                };
+
                 // 處理翻譯 WebSocket 事件
                 const handleTranslateWsMessage = (msg) => {
                     const data = msg.data || {};
@@ -3190,8 +3431,8 @@
                             if (data.error) {
                                 addTranslateLog('error', `[自動翻譯] 排入失敗: ${data.error}`);
                             } else {
-                                addTranslateLog('info', `[自動翻譯] ${data.filename} 已從 ${data.source === 'youtube' ? 'YT' : 'IG'} 下載排入翻譯`);
-                                showToast(`${data.filename} 已排入翻譯`, 'success');
+                                addTranslateLog('info', `[下載完成] ${data.filename} 已從 ${data.source === 'youtube' ? 'YT' : 'IG'} 下載到翻譯資料夾，請先改名再開始翻譯`);
+                                showToast(`${data.filename} 已下載，點擊檔名改名`, 'success', 5000);
                                 loadTranslateVideos();
                             }
                             break;
@@ -3352,6 +3593,212 @@
                     }
                 };
 
+                // ===== IG 文案產生器功能 =====
+                const loadIgExamples = async () => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/caption/examples`);
+                        const data = await res.json();
+                        ig.value.examples = data.examples || [];
+                    } catch (e) {
+                        showToast('載入範例失敗: ' + e.message, 'error');
+                    }
+                };
+
+                const loadIgDrafts = async () => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/caption/drafts`);
+                        const data = await res.json();
+                        ig.value.drafts = data.drafts || [];
+                    } catch (e) {
+                        showToast('載入草稿失敗: ' + e.message, 'error');
+                    }
+                };
+
+                const loadIgCaptions = async () => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/caption/captions`);
+                        const data = await res.json();
+                        ig.value.captions = data.captions || [];
+                    } catch (e) {
+                        showToast('載入文案失敗: ' + e.message, 'error');
+                    }
+                };
+
+                const igAddExample = async () => {
+                    const text = ig.value.newExample.trim();
+                    if (!text) return;
+                    try {
+                        const res = await fetch(`${API_BASE}/api/caption/examples`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'add', text })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            ig.value.examples = data.examples;
+                            ig.value.newExample = '';
+                            showToast('已新增範例', 'success');
+                        }
+                    } catch (e) {
+                        showToast('新增失敗: ' + e.message, 'error');
+                    }
+                };
+
+                const igDeleteExample = async (index) => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/caption/examples`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'delete', index })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            ig.value.examples = data.examples;
+                            showToast('已刪除範例', 'success');
+                        }
+                    } catch (e) {
+                        showToast('刪除失敗: ' + e.message, 'error');
+                    }
+                };
+
+                const igGenerateSingle = async (draftName) => {
+                    ig.value.generatingDraft = draftName;
+                    try {
+                        const res = await fetch(`${API_BASE}/api/caption/generate`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ draft_name: draftName })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            showToast(`已生成: ${data.video_name}`, 'success');
+                            await loadIgCaptions();
+                            ig.value.activeTab = 'captions';
+                        } else {
+                            showToast(data.error || '生成失敗', 'error');
+                        }
+                    } catch (e) {
+                        showToast('生成失敗: ' + e.message, 'error');
+                    } finally {
+                        ig.value.generatingDraft = null;
+                    }
+                };
+
+                const igGenerateAll = async () => {
+                    if (ig.value.drafts.length === 0) return;
+                    try {
+                        const res = await fetch(`${API_BASE}/api/caption/generate-batch`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ draft_names: ig.value.drafts })
+                        });
+                        const data = await res.json();
+                        if (!data.success) {
+                            showToast(data.error || '批次生成啟動失敗', 'error');
+                        }
+                    } catch (e) {
+                        showToast('批次生成失敗: ' + e.message, 'error');
+                    }
+                };
+
+                const igCopyCaption = async (content) => {
+                    try {
+                        await navigator.clipboard.writeText(content);
+                        showToast('已複製到剪貼簿', 'success');
+                    } catch (e) {
+                        showToast('複製失敗', 'error');
+                    }
+                };
+
+                const igStartEditCaption = (cap) => {
+                    ig.value.editingCaption = cap.video_name;
+                    ig.value.editingText = cap.content;
+                };
+
+                const igSaveCaption = async (videoName) => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/caption/captions/${encodeURIComponent(videoName)}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ caption: ig.value.editingText })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            showToast('文案已儲存', 'success');
+                            ig.value.editingCaption = null;
+                            await loadIgCaptions();
+                        }
+                    } catch (e) {
+                        showToast('儲存失敗: ' + e.message, 'error');
+                    }
+                };
+
+                const igDeleteCaption = async (videoName) => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/caption/captions/${encodeURIComponent(videoName)}`, {
+                            method: 'DELETE'
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            showToast('已刪除文案', 'success');
+                            await loadIgCaptions();
+                        }
+                    } catch (e) {
+                        showToast('刪除失敗: ' + e.message, 'error');
+                    }
+                };
+
+                const igTogglePublish = async (cap) => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/caption/captions/${encodeURIComponent(cap.video_name)}/publish`, {
+                            method: 'PATCH'
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            showToast(data.published ? '已標記為已發布' : '已取消發布', 'success');
+                            await loadIgCaptions();
+                        }
+                    } catch (e) {
+                        showToast('更新失敗: ' + e.message, 'error');
+                    }
+                };
+
+                const handleCaptionWsMessage = (msg) => {
+                    const data = msg.data || {};
+                    switch (msg.type) {
+                        case 'caption_batch_start':
+                            ig.value.isGenerating = true;
+                            ig.value.batchTotal = data.total;
+                            ig.value.batchCompleted = 0;
+                            ig.value.batchFailed = 0;
+                            ig.value.progressText = `批次生成中 (0/${data.total})`;
+                            break;
+                        case 'caption_generate_start':
+                            ig.value.progressText = `生成中: ${data.draft_name} (${data.index}/${data.total})`;
+                            ig.value.generatingDraft = data.draft_name;
+                            break;
+                        case 'caption_generate_done':
+                            ig.value.batchCompleted++;
+                            ig.value.generatingDraft = null;
+                            ig.value.progressText = `完成 ${ig.value.batchCompleted + ig.value.batchFailed}/${ig.value.batchTotal}`;
+                            showToast(`已生成: ${data.video_name}`, 'success');
+                            break;
+                        case 'caption_generate_error':
+                            ig.value.batchFailed++;
+                            ig.value.generatingDraft = null;
+                            ig.value.progressText = `完成 ${ig.value.batchCompleted + ig.value.batchFailed}/${ig.value.batchTotal}`;
+                            showToast(`生成失敗: ${data.draft_name} - ${data.error}`, 'error');
+                            break;
+                        case 'caption_batch_done':
+                            ig.value.isGenerating = false;
+                            ig.value.generatingDraft = null;
+                            ig.value.progressText = `完成! ${data.success_count} 成功, ${data.failed_count} 失敗`;
+                            showToast(`批次生成完成: ${data.success_count} 成功, ${data.failed_count} 失敗`, 'success');
+                            loadIgCaptions();
+                            break;
+                    }
+                };
+
                 // WebSocket 連接
                 const connectDownloadWs = () => {
                     if (backendStatus.value === 'disconnected') {
@@ -3393,6 +3840,12 @@
                     // 翻譯工作流事件
                     if (msg.type && msg.type.startsWith('translate_')) {
                         handleTranslateWsMessage(msg);
+                        return;
+                    }
+
+                    // IG 文案生成事件
+                    if (msg.type && msg.type.startsWith('caption_')) {
+                        handleCaptionWsMessage(msg);
                         return;
                     }
 
@@ -3787,6 +4240,11 @@
                         await loadDownloadData();
                         await loadYoutubeHistory();
                         await loadTranslateVideos();
+                        if (currentView.value === 'social') {
+                            loadIgExamples();
+                            loadIgDrafts();
+                            loadIgCaptions();
+                        }
                         connectDownloadWs();
                     } else {
                         // 後端未啟動，顯示提示
@@ -3802,6 +4260,11 @@
                                     await loadDownloadData();
                                     await loadYoutubeHistory();
                                     await loadTranslateVideos();
+                                    if (currentView.value === 'social') {
+                                        loadIgExamples();
+                                        loadIgDrafts();
+                                        loadIgCaptions();
+                                    }
                                     connectDownloadWs();
                                 }
                             }
@@ -3823,6 +4286,12 @@
                     // 當切換到工作流時載入影片列表
                     if (newView === 'workflow') {
                         loadTranslateVideos();
+                    }
+                    // 當切換到社群工具時載入 IG 文案資料
+                    if (newView === 'social') {
+                        loadIgExamples();
+                        loadIgDrafts();
+                        loadIgCaptions();
                     }
                 });
 
@@ -3902,6 +4371,8 @@
                     handleFileSelect,
                     downloadFromUrl,
                     deleteTranslateVideo,
+                    startRename,
+                    renameTranslateVideo,
                     loadTranslateVideos,
                     API_BASE,
                     // 字幕編輯器
@@ -3918,6 +4389,20 @@
                     loadSubtitleConfig,
                     saveSubtitleConfig,
                     startSubtitleProcess,
+                    // IG 文案產生器
+                    ig,
+                    loadIgExamples,
+                    loadIgDrafts,
+                    loadIgCaptions,
+                    igAddExample,
+                    igDeleteExample,
+                    igGenerateSingle,
+                    igGenerateAll,
+                    igCopyCaption,
+                    igStartEditCaption,
+                    igSaveCaption,
+                    igDeleteCaption,
+                    igTogglePublish,
                 };
             }
         }).mount('#app');

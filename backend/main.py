@@ -11,9 +11,11 @@ from api.routes import router
 from api.youtube_routes import router as youtube_router
 from api.ig_ytdlp_routes import router as ig_ytdlp_router
 from api.translate_routes import router as translate_router
+from api.caption_routes import router as caption_router
 from api.websocket import manager
 from services.downloader import download_service
 from services.translate_service import translate_service
+from services.caption_service import caption_service
 
 # Project root (parent of backend/)
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -27,6 +29,10 @@ async def lifespan(app: FastAPI):
     # 設定 translate_service 的 event loop 和 WebSocket manager
     translate_service.set_event_loop(asyncio.get_running_loop())
     translate_service.set_ws_manager(manager)
+
+    # 設定 caption_service 的 event loop 和 WebSocket manager
+    caption_service.set_event_loop(asyncio.get_running_loop())
+    caption_service.set_ws_manager(manager)
 
     yield
     # 關閉時清理
@@ -64,6 +70,7 @@ app.include_router(router)
 app.include_router(youtube_router)
 app.include_router(ig_ytdlp_router)  # IG yt-dlp 備案路由
 app.include_router(translate_router)  # 翻譯 API 路由
+app.include_router(caption_router)   # IG 文案 API 路由
 
 # 靜態檔案 - CSS
 styles_dir = PROJECT_ROOT / "styles"
