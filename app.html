@@ -1654,6 +1654,13 @@
                             <span class="video-list-size">{{ formatFileSize(video.size) }}</span>
                             <span class="badge" :class="'badge-' + video.status">{{ video.status }}</span>
                             <div class="video-list-actions">
+                                <button v-if="video.status !== 'done'"
+                                        class="btn btn-primary"
+                                        style="padding: 4px 12px; font-size: 0.75rem;"
+                                        @click="startTranslateSingle(video.filename)"
+                                        :disabled="ts.isRunning">
+                                    {{ ts.isRunning && ts.currentVideo === video.name ? '翻譯中...' : '翻譯' }}
+                                </button>
                                 <a v-if="video.status === 'done'"
                                    class="btn btn-secondary"
                                    :href="API_BASE + '/api/translate/results/' + video.name + '/srt'"
@@ -2968,6 +2975,7 @@
                     downloadStatus: null,
                     editingVideo: null,
                     editingName: '',
+                    currentVideo: null,
                 });
                 const fileInput = ref(null);
                 const translateLogContainer = ref(null);
@@ -3196,6 +3204,28 @@
                     }
                 };
 
+                const startTranslateSingle = async (filename) => {
+                    if (ts.value.isRunning) return;
+                    try {
+                        const res = await fetch(`${API_BASE}/api/translate/start/${encodeURIComponent(filename)}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ force: false })
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            ts.value.isRunning = true;
+                            ts.value.showLogs = true;
+                            addTranslateLog('info', `[系統] 開始翻譯: ${filename}`);
+                            showToast(`開始翻譯 ${filename}`, 'success');
+                        } else {
+                            showToast(result.message || '啟動失敗', 'warning');
+                        }
+                    } catch (e) {
+                        showToast('啟動失敗: ' + e.message, 'error');
+                    }
+                };
+
                 const handleFileDrop = async (event) => {
                     ts.value.isDragOver = false;
                     const files = Array.from(event.dataTransfer.files);
@@ -3356,6 +3386,7 @@
                         case 'translate_transcribe_start': {
                             const item = ensureQueueItem(data.video);
                             item.transcribe = 'active';
+                            ts.value.currentVideo = data.video;
                             ts.value.progressText = `辨識中: ${data.video}`;
                             addTranslateLog('info', `[辨識] 開始: ${data.video}`);
                             break;
@@ -3419,6 +3450,7 @@
 
                         case 'translate_pipeline_done':
                             ts.value.isRunning = false;
+                            ts.value.currentVideo = null;
                             ts.value.progressText = `完成! ${data.success_count || 0} 成功, ${data.failed_count || 0} 失敗`;
                             addTranslateLog('info', `[Pipeline] 完成! 成功: ${data.success_count || 0}, 失敗: ${data.failed_count || 0}`);
                             showToast('翻譯 Pipeline 完成', 'success');
@@ -4366,6 +4398,7 @@
                     fileInput,
                     translateLogContainer,
                     startTranslatePipeline,
+                    startTranslateSingle,
                     handleFileDrop,
                     triggerFileInput,
                     handleFileSelect,

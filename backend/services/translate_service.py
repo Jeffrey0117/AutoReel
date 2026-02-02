@@ -148,6 +148,67 @@ class TranslateService:
             return True
         return False
 
+    def rename_video(self, filename: str, new_name: str) -> Dict[str, Any]:
+        """Rename a video in translate_raw folder.
+
+        Args:
+            filename: Current filename (e.g. 'video1.mp4')
+            new_name: New name without extension (e.g. 'My Video Title')
+
+        Returns:
+            Dict with success status and new filename.
+        """
+        new_name = new_name.strip()
+        if not new_name:
+            return {"success": False, "error": "名稱不能為空"}
+
+        invalid_chars = '<>:"/\\|?*'
+        if any(c in new_name for c in invalid_chars):
+            return {"success": False, "error": f"檔名不能包含 {invalid_chars}"}
+
+        old_path = self.videos_folder / filename
+        if not old_path.exists():
+            return {"success": False, "error": "檔案不存在"}
+
+        extension = old_path.suffix
+        new_filename = new_name + extension
+        new_path = old_path.parent / new_filename
+
+        if old_path == new_path:
+            return {"success": False, "error": "檔名沒有變更"}
+
+        if new_path.exists():
+            return {"success": False, "error": "已有同名檔案"}
+
+        old_path.rename(new_path)
+        return {
+            "success": True,
+            "old_filename": filename,
+            "new_filename": new_filename,
+        }
+
+    def start_single(self, filename: str, force: bool = False):
+        """Start translation for a single video file."""
+        with self._lock:
+            if self.is_running:
+                return False
+            self.is_running = True
+
+        video_path = self.videos_folder / filename
+        if not video_path.exists():
+            with self._lock:
+                self.is_running = False
+            return False
+
+        thread = threading.Thread(
+            target=self._run_pipeline,
+            args=(force, str(video_path)),
+            daemon=True,
+            name="translate-single"
+        )
+        thread.start()
+        return True
+
     def start_pipeline(self, force: bool = False):
         """Start the translation pipeline in a background thread."""
         with self._lock:
@@ -164,7 +225,7 @@ class TranslateService:
         thread.start()
         return True
 
-    def _run_pipeline(self, force: bool = False):
+    def _run_pipeline(self, force: bool = False, single_video_path: str = None):
         """Run the pipeline (called from background thread)."""
         try:
             from translate_video import TranslationWorkflow, TranscriptionPipeline
@@ -172,11 +233,14 @@ class TranslateService:
             workflow = TranslationWorkflow(str(self.config_path))
             config = workflow.config.get("parallel", {})
 
-            # Discover video files
-            video_extensions = ["*.mp4", "*.avi", "*.mov", "*.mkv"]
-            video_files = []
-            for ext in video_extensions:
-                video_files.extend(self.videos_folder.glob(ext))
+            if single_video_path:
+                video_files = [Path(single_video_path)]
+            else:
+                # Discover video files
+                video_extensions = ["*.mp4", "*.avi", "*.mov", "*.mkv"]
+                video_files = []
+                for ext in video_extensions:
+                    video_files.extend(self.videos_folder.glob(ext))
 
             if not video_files:
                 self._broadcast({
@@ -342,10 +406,6 @@ class TranslateService:
                     "type": "translate_download_progress",
                     "data": {"status": "completed", "url": url, "progress": 100}
                 })
-
-                # Auto-start translation if requested
-                if auto_translate and not self.is_running:
-                    self.start_pipeline()
             else:
                 self._broadcast({
                     "type": "translate_download_progress",

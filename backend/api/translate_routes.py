@@ -22,6 +22,10 @@ class UrlDownloadRequest(BaseModel):
     auto_translate: bool = True
 
 
+class RenameRequest(BaseModel):
+    new_name: str
+
+
 class ConfigUpdate(BaseModel):
     config: dict
 
@@ -54,6 +58,15 @@ async def list_videos():
     return translate_service.list_videos()
 
 
+@router.post("/videos/{filename}/rename")
+async def rename_video(filename: str, body: RenameRequest):
+    """Rename a video in translate_raw."""
+    result = translate_service.rename_video(filename, body.new_name)
+    if not result["success"]:
+        raise HTTPException(400, result["error"])
+    return result
+
+
 @router.delete("/videos/{filename}")
 async def delete_video(filename: str):
     """Delete a video from translate_raw."""
@@ -74,6 +87,20 @@ async def start_pipeline(body: Optional[StartRequest] = None):
 
     started = translate_service.start_pipeline(force=force)
     return {"success": started, "message": "Pipeline started" if started else "Failed to start"}
+
+
+@router.post("/start/{filename}")
+async def start_single(filename: str, body: Optional[StartRequest] = None):
+    """Start translation for a single video file."""
+    force = body.force if body else False
+
+    if translate_service.is_running:
+        return {"success": False, "message": "Pipeline already running"}
+
+    started = translate_service.start_single(filename, force=force)
+    if not started:
+        return {"success": False, "message": "Video not found or failed to start"}
+    return {"success": True, "message": f"Started translating {filename}"}
 
 
 @router.get("/status")
