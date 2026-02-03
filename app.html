@@ -1360,6 +1360,15 @@
             font-size: var(--text-xs);
         }
 
+        /* 已翻譯影片背景色 */
+        .video-list-item--done {
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .video-list-item--done:hover {
+            background: rgba(34, 197, 94, 0.15);
+        }
+
         /* ===== Status Badge ===== */
         .badge {
             display: inline-block;
@@ -1638,7 +1647,9 @@
                         <div v-if="ts.videos.length === 0" style="text-align: center; padding: var(--space-8); color: var(--text-muted);">
                             沒有影片。拖拉上傳或貼網址下載
                         </div>
-                        <div v-for="video in ts.videos" :key="video.filename" class="video-list-item">
+                        <div v-for="video in ts.videos" :key="video.filename"
+                             class="video-list-item"
+                             :class="'video-list-item--' + video.status">
                             <!-- 改名模式 -->
                             <input v-if="ts.editingVideo === video.filename"
                                    class="video-rename-input"
@@ -1654,12 +1665,12 @@
                             <span class="video-list-size">{{ formatFileSize(video.size) }}</span>
                             <span class="badge" :class="'badge-' + video.status">{{ video.status }}</span>
                             <div class="video-list-actions">
-                                <button v-if="video.status !== 'done'"
-                                        class="btn btn-primary"
+                                <button class="btn"
+                                        :class="video.status === 'done' ? 'btn-secondary' : 'btn-primary'"
                                         style="padding: 4px 12px; font-size: 0.75rem;"
-                                        @click="startTranslateSingle(video.filename)"
+                                        @click="startTranslateSingle(video.filename, video.status === 'done')"
                                         :disabled="ts.isRunning">
-                                    {{ ts.isRunning && ts.currentVideo === video.name ? '翻譯中...' : '翻譯' }}
+                                    {{ ts.isRunning && ts.currentVideo === video.name ? '翻譯中...' : (video.status === 'done' ? '重新翻譯' : '翻譯') }}
                                 </button>
                                 <a v-if="video.status === 'done'"
                                    class="btn btn-secondary"
@@ -1862,6 +1873,75 @@
                     </div>
                 </div>
 
+                <!-- Overview Dashboard -->
+                <div v-if="currentView === 'overview'" class="workflow-section">
+                    <div class="workflow-header">
+                        <div>
+                            <h2 class="workflow-title">工作流總覽</h2>
+                            <p class="workflow-subtitle">追蹤所有影片的處理進度</p>
+                        </div>
+                        <button class="btn btn-secondary" @click="refreshOverview">
+                            <i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> 刷新
+                        </button>
+                    </div>
+
+                    <!-- 統計卡片 -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
+                        <div class="card" style="text-align: center; padding: 20px;">
+                            <div style="font-size: 2rem; font-weight: 700; color: var(--text-primary);">{{ overviewStats.total }}</div>
+                            <div style="font-size: 0.875rem; color: var(--text-muted);">總影片數</div>
+                        </div>
+                        <div class="card" style="text-align: center; padding: 20px;">
+                            <div style="font-size: 2rem; font-weight: 700; color: #22c55e;">{{ overviewStats.translated }}</div>
+                            <div style="font-size: 0.875rem; color: var(--text-muted);">已翻譯</div>
+                        </div>
+                        <div class="card" style="text-align: center; padding: 20px;">
+                            <div style="font-size: 2rem; font-weight: 700; color: #3b82f6;">{{ overviewStats.captioned }}</div>
+                            <div style="font-size: 0.875rem; color: var(--text-muted);">已生成文案</div>
+                        </div>
+                        <div class="card" style="text-align: center; padding: 20px;">
+                            <div style="font-size: 2rem; font-weight: 700; color: #a855f7;">{{ overviewStats.published }}</div>
+                            <div style="font-size: 0.875rem; color: var(--text-muted);">已發布</div>
+                        </div>
+                    </div>
+
+                    <!-- 影片列表表格 -->
+                    <div class="card">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--border-default);">
+                                    <th style="text-align: left; padding: 12px 16px; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">影片名稱</th>
+                                    <th style="text-align: center; padding: 12px 16px; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">翻譯</th>
+                                    <th style="text-align: center; padding: 12px 16px; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">文案</th>
+                                    <th style="text-align: center; padding: 12px 16px; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">發布</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="item in overviewList" :key="item.name"
+                                    style="border-bottom: 1px solid var(--border-default);"
+                                    :style="item.published ? 'background: rgba(34, 197, 94, 0.1)' : ''">
+                                    <td style="padding: 12px 16px; font-size: 0.875rem; color: var(--text-primary);">{{ item.name }}</td>
+                                    <td style="text-align: center; padding: 12px 16px;">
+                                        <span v-if="item.translated" style="color: #22c55e;">✓</span>
+                                        <span v-else style="color: var(--text-muted);">—</span>
+                                    </td>
+                                    <td style="text-align: center; padding: 12px 16px;">
+                                        <span v-if="item.captioned" style="color: #3b82f6;">✓</span>
+                                        <span v-else style="color: var(--text-muted);">—</span>
+                                    </td>
+                                    <td style="text-align: center; padding: 12px 16px;">
+                                        <span v-if="item.published" style="color: #a855f7;">✓</span>
+                                        <span v-else style="color: var(--text-muted);">—</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div v-if="overviewList.length === 0" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                            沒有影片資料
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Social / IG Caption Generator -->
                 <div v-if="currentView === 'social'">
                     <div class="workflow-header">
@@ -1934,17 +2014,30 @@
                         <div v-if="ig.drafts.length === 0" class="card" style="text-align: center; padding: 32px; color: var(--text-muted);">
                             找不到翻譯專案草稿，請先完成翻譯工作流
                         </div>
-                        <div class="card" style="margin-bottom: 8px; padding: 14px 16px;" v-for="draft in ig.drafts" :key="draft">
+                        <div class="card" style="margin-bottom: 8px; padding: 14px 16px;"
+                             :style="ig.captions.find(c => draft.endsWith(c.video_name) && c.published) ? 'background: rgba(34, 197, 94, 0.1)' : ''"
+                             v-for="draft in ig.drafts" :key="draft">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span style="font-size: 0.875rem; color: var(--text-primary);">{{ draft }}</span>
+                                <span style="font-size: 0.875rem; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                                    {{ draft }}
+                                    <span v-if="ig.captions.find(c => draft.endsWith(c.video_name) && c.published)"
+                                          style="font-size: 0.65rem; padding: 2px 6px; background: rgba(34, 197, 94, 0.2); color: #22c55e; border-radius: 4px;">
+                                        已發布
+                                    </span>
+                                    <span v-else-if="ig.captions.find(c => draft.endsWith(c.video_name))"
+                                          style="font-size: 0.65rem; padding: 2px 6px; background: rgba(59, 130, 246, 0.2); color: #3b82f6; border-radius: 4px;">
+                                        已生成
+                                    </span>
+                                </span>
                                 <button
-                                    class="btn btn-primary"
+                                    class="btn"
+                                    :class="ig.captions.find(c => draft.endsWith(c.video_name)) ? 'btn-secondary' : 'btn-primary'"
                                     style="padding: 6px 16px; font-size: 0.8rem;"
                                     @click="igGenerateSingle(draft)"
                                     :disabled="ig.isGenerating || ig.generatingDraft === draft"
                                 >
                                     <i data-lucide="sparkles" style="width:14px;height:14px;"></i>
-                                    {{ ig.generatingDraft === draft ? '生成中...' : '生成' }}
+                                    {{ ig.generatingDraft === draft ? '生成中...' : (ig.captions.find(c => draft.endsWith(c.video_name)) ? '重新生成' : '生成') }}
                                 </button>
                             </div>
                         </div>
@@ -2023,10 +2116,34 @@
                 <div v-if="currentView === 'download'">
                     <div class="workflow-header">
                         <div>
-                            <h1 class="workflow-title">{{ t('download.title') }}</h1>
-                            <p class="workflow-subtitle">{{ t('download.subtitle') }}</p>
+                            <h1 class="workflow-title">影片下載</h1>
+                            <p class="workflow-subtitle">下載 Instagram 和 YouTube 影片</p>
                         </div>
-                        <div style="display: flex; gap: 12px;">
+                    </div>
+
+                    <!-- 來源切換 Tabs -->
+                    <div style="display: flex; gap: 0; margin-bottom: 20px; border-bottom: 1px solid var(--border-default);">
+                        <button
+                            @click="download.sourceTab = 'ig'"
+                            style="padding: 12px 24px; font-size: 0.875rem; cursor: pointer; border: none; background: none; color: var(--text-muted); border-bottom: 2px solid transparent; transition: all 0.2s; display: flex; align-items: center; gap: 8px;"
+                            :style="download.sourceTab === 'ig' ? { color: 'var(--text-primary)', borderBottomColor: 'var(--text-primary)', fontWeight: 600 } : {}"
+                        >
+                            <i data-lucide="instagram" style="width:18px;height:18px;"></i>
+                            Instagram
+                        </button>
+                        <button
+                            @click="download.sourceTab = 'youtube'"
+                            style="padding: 12px 24px; font-size: 0.875rem; cursor: pointer; border: none; background: none; color: var(--text-muted); border-bottom: 2px solid transparent; transition: all 0.2s; display: flex; align-items: center; gap: 8px;"
+                            :style="download.sourceTab === 'youtube' ? { color: 'var(--text-primary)', borderBottomColor: 'var(--text-primary)', fontWeight: 600 } : {}"
+                        >
+                            <i data-lucide="youtube" style="width:18px;height:18px;"></i>
+                            YouTube
+                        </button>
+                    </div>
+
+                    <!-- IG Download Content -->
+                    <div v-if="download.sourceTab === 'ig'">
+                        <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
                             <button v-if="!download.isRunning" class="btn btn-success" @click="startDownload" :disabled="download.queue.length === 0">
                                 <i data-lucide="play" style="width:16px;height:16px;"></i> {{ t('download.startDownload') }}
                             </button>
@@ -2034,296 +2151,289 @@
                                 <i data-lucide="square" style="width:16px;height:16px;"></i> {{ t('download.stop') }}
                             </button>
                         </div>
-                    </div>
 
-                    <!-- 輸入區 -->
-                    <div class="card" style="margin-bottom: 24px;">
-                        <h3 class="card-title" style="margin-bottom: 16px;"><i data-lucide="link" style="width:18px;height:18px;"></i> {{ t('download.inputUrl') }}</h3>
-                        <textarea
-                            v-model="download.urlInput"
-                            class="download-input"
-                            :placeholder="t('download.placeholder')"
-                            :disabled="download.isLoading"
-                        ></textarea>
-                        <div style="display: flex; gap: 12px; margin-top: 16px;">
-                            <button class="btn btn-primary" @click="addToQueue" :disabled="!download.urlInput.trim() || download.isLoading">
-                                {{ download.isLoading ? t('download.adding') : t('download.addToQueue') }}
+                        <!-- 輸入區 -->
+                        <div class="card" style="margin-bottom: 24px;">
+                            <h3 class="card-title" style="margin-bottom: 16px;"><i data-lucide="link" style="width:18px;height:18px;"></i> {{ t('download.inputUrl') }}</h3>
+                            <textarea
+                                v-model="download.urlInput"
+                                class="download-input"
+                                :placeholder="t('download.placeholder')"
+                                :disabled="download.isLoading"
+                            ></textarea>
+                            <div style="display: flex; gap: 12px; margin-top: 16px;">
+                                <button class="btn btn-primary" @click="addToQueue" :disabled="!download.urlInput.trim() || download.isLoading">
+                                    {{ download.isLoading ? t('download.adding') : t('download.addToQueue') }}
+                                </button>
+                                <button class="btn btn-secondary" @click="download.urlInput = ''">{{ t('download.clear') }}</button>
+                            </div>
+                        </div>
+
+                        <!-- 即時進度 -->
+                        <div v-if="download.currentTask" class="card" style="margin-bottom: 24px; border-color: var(--text-secondary);">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                <span style="color: var(--text-secondary); font-size: 0.875rem;">{{ download.currentTask.url }}</span>
+                                <span style="color: var(--text-primary);">{{ download.currentTask.progress }}%</span>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" :style="{ width: download.currentTask.progress + '%', background: 'var(--text-primary)' }"></div>
+                            </div>
+                            <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted);">{{ download.currentTask.step }}</div>
+                        </div>
+
+                        <!-- Tabs -->
+                        <div class="download-tabs">
+                            <button class="download-tab" :class="{ active: download.activeTab === 'queue' }" @click="download.activeTab = 'queue'">
+                                {{ t('download.queue') }} ({{ download.queue.length }})
                             </button>
-                            <button class="btn btn-secondary" @click="download.urlInput = ''">{{ t('download.clear') }}</button>
-                        </div>
-                    </div>
-
-                    <!-- 即時進度 -->
-                    <div v-if="download.currentTask" class="card" style="margin-bottom: 24px; border-color: var(--text-secondary);">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-                            <span style="color: var(--text-secondary); font-size: 0.875rem;">{{ download.currentTask.url }}</span>
-                            <span style="color: var(--text-primary);">{{ download.currentTask.progress }}%</span>
-                        </div>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" :style="{ width: download.currentTask.progress + '%', background: 'var(--text-primary)' }"></div>
-                        </div>
-                        <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted);">{{ download.currentTask.step }}</div>
-                    </div>
-
-                    <!-- Tabs -->
-                    <div class="download-tabs">
-                        <button class="download-tab" :class="{ active: download.activeTab === 'queue' }" @click="download.activeTab = 'queue'">
-                            {{ t('download.queue') }} ({{ download.queue.length }})
-                        </button>
-                        <button class="download-tab" :class="{ active: download.activeTab === 'history' }" @click="download.activeTab = 'history'">
-                            {{ t('download.history') }} ({{ download.history.length }})
-                        </button>
-                        <button class="download-tab" :class="{ active: download.activeTab === 'settings' }" @click="download.activeTab = 'settings'">
-                            {{ t('download.settings') }}
-                        </button>
-                    </div>
-
-                    <!-- Queue -->
-                    <div v-if="download.activeTab === 'queue'" class="card">
-                        <div v-if="download.queue.length === 0" style="text-align: center; padding: 48px; color: var(--text-muted);">
-                            <div style="margin-bottom: 12px;"><i data-lucide="inbox" style="width:48px;height:48px;stroke-width:1;"></i></div>
-                            <div>{{ t('download.emptyQueue') }}</div>
-                        </div>
-                        <div v-else>
-                            <div v-for="item in download.queue" :key="item.id" class="queue-item">
-                                <span class="queue-icon"><i :data-lucide="getStatusIcon(item.status)" style="width:18px;height:18px;" :style="{ color: item.status === 'completed' ? 'var(--text-primary)' : item.status === 'failed' ? '#ef4444' : item.status === 'processing' ? 'var(--text-secondary)' : 'var(--text-muted)' }"></i></span>
-                                <div class="queue-content">
-                                    <div class="queue-url">{{ formatUrl(item.url) }}</div>
-                                    <div class="queue-status" :class="'status-' + item.status">
-                                        {{ getStatusText(item) }}
-                                    </div>
-                                </div>
-                                <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" @click="removeFromQueue(item.id)" :disabled="item.status === 'processing'">
-                                    刪除
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- History -->
-                    <div v-if="download.activeTab === 'history'" class="card">
-                        <div v-if="download.history.length === 0" style="text-align: center; padding: 48px; color: var(--text-muted);">
-                            <div style="margin-bottom: 12px;"><i data-lucide="history" style="width:48px;height:48px;stroke-width:1;"></i></div>
-                            <div>沒有下載紀錄</div>
-                        </div>
-                        <div v-else>
-                            <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
-                                <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" @click="clearHistory">清除全部</button>
-                            </div>
-                            <div v-for="item in download.history" :key="item.id" class="queue-item">
-                                <span class="queue-icon"><i :data-lucide="getStatusIcon(item.status)" style="width:18px;height:18px;" :style="{ color: item.status === 'completed' ? 'var(--text-primary)' : '#ef4444' }"></i></span>
-                                <div class="queue-content">
-                                    <div class="queue-url">{{ formatUrl(item.url) }}</div>
-                                    <div class="queue-status" :class="'status-' + item.status">
-                                        {{ item.status === 'completed' ? item.filename : item.error_message }}
-                                    </div>
-                                </div>
-                                <button v-if="item.status === 'failed'" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" @click="retryDownload(item.id)">
-                                    重試
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Settings -->
-                    <div v-if="download.activeTab === 'settings'" class="card">
-                        <div class="setting-row">
-                            <span class="setting-label">下載路徑</span>
-                            <span class="setting-value">{{ download.settings.download_path }}</span>
-                        </div>
-                        <div class="setting-row">
-                            <span class="setting-label">下載完成後自動移除</span>
-                            <label class="toggle">
-                                <input type="checkbox" v-model="download.settings.auto_remove">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="setting-row">
-                            <span class="setting-label">無頭模式（隱藏瀏覽器）</span>
-                            <label class="toggle">
-                                <input type="checkbox" v-model="download.settings.headless_mode">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- YouTube Download -->
-                <div v-if="currentView === 'youtube'">
-                    <div class="workflow-header">
-                        <div>
-                            <h1 class="workflow-title">{{ t('youtube.title') }}</h1>
-                            <p class="workflow-subtitle">{{ t('youtube.subtitle') }}</p>
-                        </div>
-                    </div>
-
-                    <!-- 輸入區 -->
-                    <div class="card" style="margin-bottom: 24px;">
-                        <h3 class="card-title" style="margin-bottom: 16px;"><i data-lucide="link" style="width:18px;height:18px;"></i> {{ t('youtube.inputUrl') }}</h3>
-                        <div style="display: flex; gap: 12px;">
-                            <input
-                                type="text"
-                                v-model="youtube.urlInput"
-                                class="yt-url-input"
-                                :placeholder="t('youtube.placeholder')"
-                                @keyup.enter="getYoutubeInfo"
-                                :disabled="youtube.isLoading || youtube.isDownloading"
-                            >
-                            <button class="btn btn-primary" @click="getYoutubeInfo" :disabled="!youtube.urlInput.trim() || youtube.isLoading || youtube.isDownloading">
-                                <i :data-lucide="youtube.isLoading ? 'loader-2' : 'search'" style="width:16px;height:16px;" :class="{ 'spinning-icon': youtube.isLoading }"></i>
-                                {{ youtube.isLoading ? t('youtube.parsing') : t('youtube.parse') }}
+                            <button class="download-tab" :class="{ active: download.activeTab === 'history' }" @click="download.activeTab = 'history'">
+                                {{ t('download.history') }} ({{ download.history.length }})
+                            </button>
+                            <button class="download-tab" :class="{ active: download.activeTab === 'settings' }" @click="download.activeTab = 'settings'">
+                                {{ t('download.settings') }}
                             </button>
                         </div>
-                    </div>
 
-                    <!-- 影片資訊 -->
-                    <div v-if="youtube.videoInfo" class="card" style="margin-bottom: 24px;">
-                        <div class="yt-video-info">
-                            <img :src="youtube.videoInfo.thumbnail" class="yt-thumbnail" alt="thumbnail">
-                            <div class="yt-video-details">
-                                <h3 class="yt-video-title">{{ youtube.videoInfo.title }}</h3>
-                                <p class="yt-video-channel">{{ youtube.videoInfo.channel }}</p>
-                                <p class="yt-video-meta">
-                                    {{ formatDuration(youtube.videoInfo.duration) }} ・
-                                    {{ formatViews(youtube.videoInfo.view_count) }} {{ t('youtube.views') }}
-                                </p>
+                        <!-- Queue -->
+                        <div v-if="download.activeTab === 'queue'" class="card">
+                            <div v-if="download.queue.length === 0" style="text-align: center; padding: 48px; color: var(--text-muted);">
+                                <div style="margin-bottom: 12px;"><i data-lucide="inbox" style="width:48px;height:48px;stroke-width:1;"></i></div>
+                                <div>{{ t('download.emptyQueue') }}</div>
+                            </div>
+                            <div v-else>
+                                <div v-for="item in download.queue" :key="item.id" class="queue-item">
+                                    <span class="queue-icon"><i :data-lucide="getStatusIcon(item.status)" style="width:18px;height:18px;" :style="{ color: item.status === 'completed' ? 'var(--text-primary)' : item.status === 'failed' ? '#ef4444' : item.status === 'processing' ? 'var(--text-secondary)' : 'var(--text-muted)' }"></i></span>
+                                    <div class="queue-content">
+                                        <div class="queue-url">{{ formatUrl(item.url) }}</div>
+                                        <div class="queue-status" :class="'status-' + item.status">
+                                            {{ getStatusText(item) }}
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" @click="removeFromQueue(item.id)" :disabled="item.status === 'processing'">
+                                        刪除
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="yt-options">
-                            <div class="yt-option-group">
-                                <label class="config-label">{{ t('youtube.quality') }}</label>
-                                <select v-model="youtube.format" class="yt-select" :disabled="youtube.isDownloading">
-                                    <option value="best">{{ t('youtube.bestQuality') }}</option>
-                                    <option value="1080p">1080p</option>
-                                    <option value="720p">720p</option>
-                                    <option value="480p">480p</option>
-                                </select>
+                        <!-- History -->
+                        <div v-if="download.activeTab === 'history'" class="card">
+                            <div v-if="download.history.length === 0" style="text-align: center; padding: 48px; color: var(--text-muted);">
+                                <div style="margin-bottom: 12px;"><i data-lucide="history" style="width:48px;height:48px;stroke-width:1;"></i></div>
+                                <div>沒有下載紀錄</div>
                             </div>
-                            <div class="yt-option-group">
+                            <div v-else>
+                                <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+                                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" @click="clearHistory">清除全部</button>
+                                </div>
+                                <div v-for="item in download.history" :key="item.id" class="queue-item">
+                                    <span class="queue-icon"><i :data-lucide="getStatusIcon(item.status)" style="width:18px;height:18px;" :style="{ color: item.status === 'completed' ? 'var(--text-primary)' : '#ef4444' }"></i></span>
+                                    <div class="queue-content">
+                                        <div class="queue-url">{{ formatUrl(item.url) }}</div>
+                                        <div class="queue-status" :class="'status-' + item.status">
+                                            {{ item.status === 'completed' ? item.filename : item.error_message }}
+                                        </div>
+                                    </div>
+                                    <button v-if="item.status === 'failed'" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" @click="retryDownload(item.id)">
+                                        重試
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Settings -->
+                        <div v-if="download.activeTab === 'settings'" class="card">
+                            <div class="setting-row">
+                                <span class="setting-label">下載路徑</span>
+                                <span class="setting-value">{{ download.settings.download_path }}</span>
+                            </div>
+                            <div class="setting-row">
+                                <span class="setting-label">下載完成後自動移除</span>
                                 <label class="toggle">
-                                    <input type="checkbox" v-model="youtube.audioOnly" :disabled="youtube.isDownloading">
+                                    <input type="checkbox" v-model="download.settings.auto_remove">
                                     <span class="toggle-slider"></span>
                                 </label>
-                                <span style="margin-left: 8px;">{{ t('youtube.audioOnly') }}</span>
+                            </div>
+                            <div class="setting-row">
+                                <span class="setting-label">無頭模式（隱藏瀏覽器）</span>
+                                <label class="toggle">
+                                    <input type="checkbox" v-model="download.settings.headless_mode">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- YouTube Download Content -->
+                    <div v-if="download.sourceTab === 'youtube'">
+                        <!-- 輸入區 -->
+                        <div class="card" style="margin-bottom: 24px;">
+                            <h3 class="card-title" style="margin-bottom: 16px;"><i data-lucide="link" style="width:18px;height:18px;"></i> {{ t('youtube.inputUrl') }}</h3>
+                            <div style="display: flex; gap: 12px;">
+                                <input
+                                    type="text"
+                                    v-model="youtube.urlInput"
+                                    class="yt-url-input"
+                                    :placeholder="t('youtube.placeholder')"
+                                    @keyup.enter="getYoutubeInfo"
+                                    :disabled="youtube.isLoading || youtube.isDownloading"
+                                >
+                                <button class="btn btn-primary" @click="getYoutubeInfo" :disabled="!youtube.urlInput.trim() || youtube.isLoading || youtube.isDownloading">
+                                    <i :data-lucide="youtube.isLoading ? 'loader-2' : 'search'" style="width:16px;height:16px;" :class="{ 'spinning-icon': youtube.isLoading }"></i>
+                                    {{ youtube.isLoading ? t('youtube.parsing') : t('youtube.parse') }}
+                                </button>
                             </div>
                         </div>
 
-                        <div style="margin-top: 20px;">
-                            <button class="btn btn-success btn-lg" @click="startYoutubeDownload" :disabled="youtube.isDownloading">
-                                <i :data-lucide="youtube.isDownloading ? 'loader-2' : 'download'" style="width:18px;height:18px;" :class="{ 'spinning-icon': youtube.isDownloading }"></i>
-                                {{ youtube.isDownloading ? t('youtube.downloading') : t('youtube.startDownload') }}
+                        <!-- 影片資訊 -->
+                        <div v-if="youtube.videoInfo" class="card" style="margin-bottom: 24px;">
+                            <div class="yt-video-info">
+                                <img :src="youtube.videoInfo.thumbnail" class="yt-thumbnail" alt="thumbnail">
+                                <div class="yt-video-details">
+                                    <h3 class="yt-video-title">{{ youtube.videoInfo.title }}</h3>
+                                    <p class="yt-video-channel">{{ youtube.videoInfo.channel }}</p>
+                                    <p class="yt-video-meta">
+                                        {{ formatDuration(youtube.videoInfo.duration) }} ・
+                                        {{ formatViews(youtube.videoInfo.view_count) }} {{ t('youtube.views') }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="yt-options">
+                                <div class="yt-option-group">
+                                    <label class="config-label">{{ t('youtube.quality') }}</label>
+                                    <select v-model="youtube.format" class="yt-select" :disabled="youtube.isDownloading">
+                                        <option value="best">{{ t('youtube.bestQuality') }}</option>
+                                        <option value="1080p">1080p</option>
+                                        <option value="720p">720p</option>
+                                        <option value="480p">480p</option>
+                                    </select>
+                                </div>
+                                <div class="yt-option-group">
+                                    <label class="toggle">
+                                        <input type="checkbox" v-model="youtube.audioOnly" :disabled="youtube.isDownloading">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                    <span style="margin-left: 8px;">{{ t('youtube.audioOnly') }}</span>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 20px;">
+                                <button class="btn btn-success btn-lg" @click="startYoutubeDownload" :disabled="youtube.isDownloading">
+                                    <i :data-lucide="youtube.isDownloading ? 'loader-2' : 'download'" style="width:18px;height:18px;" :class="{ 'spinning-icon': youtube.isDownloading }"></i>
+                                    {{ youtube.isDownloading ? t('youtube.downloading') : t('youtube.startDownload') }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 下載進度 - 增強版 -->
+                        <div v-if="youtube.currentTask" class="card yt-download-progress" :class="'status-' + youtube.currentTask.status">
+                            <!-- 狀態標題 -->
+                            <div class="yt-progress-title">
+                                <div class="status-indicator">
+                                    <i :data-lucide="getYoutubeStatusIcon(youtube.currentTask.status)"
+                                       style="width:20px;height:20px;"
+                                       :class="{ 'spinning-icon': ['parsing', 'downloading', 'processing'].includes(youtube.currentTask.status) }"></i>
+                                    <span class="status-text">{{ getYoutubeStatusText(youtube.currentTask.status) }}</span>
+                                </div>
+                                <span class="status-percentage">{{ youtube.currentTask.progress?.toFixed(1) || 0 }}%</span>
+                            </div>
+
+                            <!-- 進度條 -->
+                            <div class="progress-bar-container" style="margin: 16px 0;">
+                                <div class="progress-bar yt-progress-bar"
+                                     :style="{
+                                         width: (youtube.currentTask.progress || 0) + '%',
+                                         background: getYoutubeProgressColor(youtube.currentTask.status)
+                                     }"></div>
+                            </div>
+
+                            <!-- 詳細資訊 -->
+                            <div class="yt-progress-details">
+                                <div class="yt-progress-row">
+                                    <span class="detail-label">
+                                        <i data-lucide="file-text" style="width:14px;height:14px;"></i>
+                                        影片標題
+                                    </span>
+                                    <span class="detail-value">{{ youtube.currentTask.title || youtube.videoInfo?.title || '載入中...' }}</span>
+                                </div>
+
+                                <div v-if="youtube.currentTask.status === 'downloading'" class="yt-progress-row">
+                                    <span class="detail-label">
+                                        <i data-lucide="gauge" style="width:14px;height:14px;"></i>
+                                        下載速度
+                                    </span>
+                                    <span class="detail-value speed-value">{{ youtube.currentTask.speed || '計算中...' }}</span>
+                                </div>
+
+                                <div v-if="youtube.currentTask.eta" class="yt-progress-row">
+                                    <span class="detail-label">
+                                        <i data-lucide="clock" style="width:14px;height:14px;"></i>
+                                        預估剩餘時間
+                                    </span>
+                                    <span class="detail-value eta-value">{{ youtube.currentTask.eta }}</span>
+                                </div>
+
+                                <div v-if="youtube.currentTask.downloaded_bytes && youtube.currentTask.total_bytes" class="yt-progress-row">
+                                    <span class="detail-label">
+                                        <i data-lucide="hard-drive" style="width:14px;height:14px;"></i>
+                                        檔案大小
+                                    </span>
+                                    <span class="detail-value">
+                                        {{ formatFileSize(youtube.currentTask.downloaded_bytes) }} / {{ formatFileSize(youtube.currentTask.total_bytes) }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- 狀態訊息 -->
+                            <div v-if="youtube.currentTask.message" class="yt-status-message">
+                                <i data-lucide="info" style="width:14px;height:14px;"></i>
+                                {{ youtube.currentTask.message }}
+                            </div>
+                        </div>
+
+                        <!-- Tabs -->
+                        <div class="download-tabs">
+                            <button class="download-tab" :class="{ active: youtube.activeTab === 'history' }" @click="youtube.activeTab = 'history'">
+                                {{ t('youtube.historyTab') }} ({{ youtube.history.length }})
+                            </button>
+                            <button class="download-tab" :class="{ active: youtube.activeTab === 'files' }" @click="youtube.activeTab = 'files'; loadYoutubeFiles()">
+                                {{ t('youtube.filesTab') }}
                             </button>
                         </div>
-                    </div>
 
-                    <!-- 下載進度 - 增強版 -->
-                    <div v-if="youtube.currentTask" class="card yt-download-progress" :class="'status-' + youtube.currentTask.status">
-                        <!-- 狀態標題 -->
-                        <div class="yt-progress-title">
-                            <div class="status-indicator">
-                                <i :data-lucide="getYoutubeStatusIcon(youtube.currentTask.status)"
-                                   style="width:20px;height:20px;"
-                                   :class="{ 'spinning-icon': ['parsing', 'downloading', 'processing'].includes(youtube.currentTask.status) }"></i>
-                                <span class="status-text">{{ getYoutubeStatusText(youtube.currentTask.status) }}</span>
+                        <!-- History -->
+                        <div v-if="youtube.activeTab === 'history'" class="card">
+                            <div v-if="youtube.history.length === 0" style="text-align: center; padding: 48px; color: var(--text-muted);">
+                                <div style="margin-bottom: 12px;"><i data-lucide="history" style="width:48px;height:48px;stroke-width:1;"></i></div>
+                                <div>{{ t('youtube.noHistory') }}</div>
                             </div>
-                            <span class="status-percentage">{{ youtube.currentTask.progress?.toFixed(1) || 0 }}%</span>
-                        </div>
-
-                        <!-- 進度條 -->
-                        <div class="progress-bar-container" style="margin: 16px 0;">
-                            <div class="progress-bar yt-progress-bar"
-                                 :style="{
-                                     width: (youtube.currentTask.progress || 0) + '%',
-                                     background: getYoutubeProgressColor(youtube.currentTask.status)
-                                 }"></div>
-                        </div>
-
-                        <!-- 詳細資訊 -->
-                        <div class="yt-progress-details">
-                            <div class="yt-progress-row">
-                                <span class="detail-label">
-                                    <i data-lucide="file-text" style="width:14px;height:14px;"></i>
-                                    影片標題
-                                </span>
-                                <span class="detail-value">{{ youtube.currentTask.title || youtube.videoInfo?.title || '載入中...' }}</span>
-                            </div>
-
-                            <div v-if="youtube.currentTask.status === 'downloading'" class="yt-progress-row">
-                                <span class="detail-label">
-                                    <i data-lucide="gauge" style="width:14px;height:14px;"></i>
-                                    下載速度
-                                </span>
-                                <span class="detail-value speed-value">{{ youtube.currentTask.speed || '計算中...' }}</span>
-                            </div>
-
-                            <div v-if="youtube.currentTask.eta" class="yt-progress-row">
-                                <span class="detail-label">
-                                    <i data-lucide="clock" style="width:14px;height:14px;"></i>
-                                    預估剩餘時間
-                                </span>
-                                <span class="detail-value eta-value">{{ youtube.currentTask.eta }}</span>
-                            </div>
-
-                            <div v-if="youtube.currentTask.downloaded_bytes && youtube.currentTask.total_bytes" class="yt-progress-row">
-                                <span class="detail-label">
-                                    <i data-lucide="hard-drive" style="width:14px;height:14px;"></i>
-                                    檔案大小
-                                </span>
-                                <span class="detail-value">
-                                    {{ formatFileSize(youtube.currentTask.downloaded_bytes) }} / {{ formatFileSize(youtube.currentTask.total_bytes) }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- 狀態訊息 -->
-                        <div v-if="youtube.currentTask.message" class="yt-status-message">
-                            <i data-lucide="info" style="width:14px;height:14px;"></i>
-                            {{ youtube.currentTask.message }}
-                        </div>
-                    </div>
-
-                    <!-- Tabs -->
-                    <div class="download-tabs">
-                        <button class="download-tab" :class="{ active: youtube.activeTab === 'history' }" @click="youtube.activeTab = 'history'">
-                            {{ t('youtube.historyTab') }} ({{ youtube.history.length }})
-                        </button>
-                        <button class="download-tab" :class="{ active: youtube.activeTab === 'files' }" @click="youtube.activeTab = 'files'; loadYoutubeFiles()">
-                            {{ t('youtube.filesTab') }}
-                        </button>
-                    </div>
-
-                    <!-- History -->
-                    <div v-if="youtube.activeTab === 'history'" class="card">
-                        <div v-if="youtube.history.length === 0" style="text-align: center; padding: 48px; color: var(--text-muted);">
-                            <div style="margin-bottom: 12px;"><i data-lucide="history" style="width:48px;height:48px;stroke-width:1;"></i></div>
-                            <div>{{ t('youtube.noHistory') }}</div>
-                        </div>
-                        <div v-else>
-                            <div v-for="item in youtube.history" :key="item.id" class="queue-item">
-                                <span class="queue-icon"><i :data-lucide="item.status === 'completed' ? 'check-circle' : 'x-circle'" style="width:18px;height:18px;" :style="{ color: item.status === 'completed' ? 'var(--text-primary)' : '#ef4444' }"></i></span>
-                                <div class="queue-content">
-                                    <div class="queue-url">{{ item.title || item.url }}</div>
-                                    <div class="queue-status" :class="'status-' + item.status">
-                                        {{ item.status === 'completed' ? item.filename : item.error }}
+                            <div v-else>
+                                <div v-for="item in youtube.history" :key="item.id" class="queue-item">
+                                    <span class="queue-icon"><i :data-lucide="item.status === 'completed' ? 'check-circle' : 'x-circle'" style="width:18px;height:18px;" :style="{ color: item.status === 'completed' ? 'var(--text-primary)' : '#ef4444' }"></i></span>
+                                    <div class="queue-content">
+                                        <div class="queue-url">{{ item.title || item.url }}</div>
+                                        <div class="queue-status" :class="'status-' + item.status">
+                                            {{ item.status === 'completed' ? item.filename : item.error }}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Files -->
-                    <div v-if="youtube.activeTab === 'files'" class="card">
-                        <div v-if="youtube.files.length === 0" style="text-align: center; padding: 48px; color: var(--text-muted);">
-                            <div style="margin-bottom: 12px;"><i data-lucide="folder" style="width:48px;height:48px;stroke-width:1;"></i></div>
-                            <div>{{ t('youtube.noHistory') }}</div>
-                        </div>
-                        <div v-else>
-                            <div v-for="file in youtube.files" :key="file.filename" class="queue-item">
-                                <span class="queue-icon"><i data-lucide="film" style="width:18px;height:18px;"></i></span>
-                                <div class="queue-content">
-                                    <div class="queue-url">{{ file.filename }}</div>
-                                    <div class="queue-status">{{ formatFileSize(file.size) }}</div>
+                        <!-- Files -->
+                        <div v-if="youtube.activeTab === 'files'" class="card">
+                            <div v-if="youtube.files.length === 0" style="text-align: center; padding: 48px; color: var(--text-muted);">
+                                <div style="margin-bottom: 12px;"><i data-lucide="folder" style="width:48px;height:48px;stroke-width:1;"></i></div>
+                                <div>{{ t('youtube.noHistory') }}</div>
+                            </div>
+                            <div v-else>
+                                <div v-for="file in youtube.files" :key="file.filename" class="queue-item">
+                                    <span class="queue-icon"><i data-lucide="film" style="width:18px;height:18px;"></i></span>
+                                    <div class="queue-content">
+                                        <div class="queue-url">{{ file.filename }}</div>
+                                        <div class="queue-status">{{ formatFileSize(file.size) }}</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2399,6 +2509,13 @@
                     <span class="bottom-nav-label">{{ t('nav.home') }}</span>
                 </a>
 
+                <div class="bottom-nav-item" :class="{ active: currentView === 'overview' }" @click="currentView = 'overview'">
+                    <div class="bottom-nav-icon">
+                        <i data-lucide="layout-grid" style="width:24px;height:24px;"></i>
+                    </div>
+                    <span class="bottom-nav-label">總覽</span>
+                </div>
+
                 <div class="bottom-nav-item" :class="{ active: currentView === 'workflow' }" @click="currentView = 'workflow'">
                     <div class="bottom-nav-icon">
                         <i data-lucide="play-circle" style="width:24px;height:24px;"></i>
@@ -2408,16 +2525,16 @@
 
                 <div class="bottom-nav-item" :class="{ active: currentView === 'download' }" @click="currentView = 'download'">
                     <div class="bottom-nav-icon">
-                        <i data-lucide="instagram" style="width:24px;height:24px;"></i>
+                        <i data-lucide="download" style="width:24px;height:24px;"></i>
                     </div>
-                    <span class="bottom-nav-label">{{ t('nav.igDownload') }}</span>
+                    <span class="bottom-nav-label">下載</span>
                 </div>
 
-                <div class="bottom-nav-item" :class="{ active: currentView === 'youtube' }" @click="currentView = 'youtube'">
+                <div class="bottom-nav-item" :class="{ active: currentView === 'social' }" @click="currentView = 'social'">
                     <div class="bottom-nav-icon">
-                        <i data-lucide="youtube" style="width:24px;height:24px;"></i>
+                        <i data-lucide="pen-line" style="width:24px;height:24px;"></i>
                     </div>
-                    <span class="bottom-nav-label">{{ t('nav.ytDownload') }}</span>
+                    <span class="bottom-nav-label">文案</span>
                 </div>
 
                 <div class="bottom-nav-item" :class="{ active: currentView === 'subtitle' }" @click="currentView = 'subtitle'">
@@ -2425,13 +2542,6 @@
                         <i data-lucide="captions" style="width:24px;height:24px;"></i>
                     </div>
                     <span class="bottom-nav-label">{{ t('nav.subtitle') }}</span>
-                </div>
-
-                <div class="bottom-nav-item" :class="{ active: currentView === 'social' }" @click="currentView = 'social'">
-                    <div class="bottom-nav-icon">
-                        <i data-lucide="pen-line" style="width:24px;height:24px;"></i>
-                    </div>
-                    <span class="bottom-nav-label">IG文案</span>
                 </div>
 
                 <div class="bottom-nav-item" :class="{ active: currentView === 'settings' }" @click="currentView = 'settings'">
@@ -2883,6 +2993,7 @@
                     queue: [],
                     history: [],
                     activeTab: 'queue',
+                    sourceTab: 'ig',
                     isRunning: false,
                     isLoading: false,
                     currentTask: null,
@@ -3204,13 +3315,13 @@
                     }
                 };
 
-                const startTranslateSingle = async (filename) => {
+                const startTranslateSingle = async (filename, force = false) => {
                     if (ts.value.isRunning) return;
                     try {
                         const res = await fetch(`${API_BASE}/api/translate/start/${encodeURIComponent(filename)}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ force: false })
+                            body: JSON.stringify({ force })
                         });
                         const result = await res.json();
                         if (result.success) {
@@ -4307,6 +4418,45 @@
                     initIcons();
                 });
 
+                // Overview Dashboard computed properties
+                const overviewList = computed(() => {
+                    const list = [];
+                    const captionMap = {};
+
+                    // 建立 caption 對照表 (video_name -> caption info)
+                    for (const cap of ig.value.captions) {
+                        captionMap[cap.video_name] = cap;
+                    }
+
+                    // 從翻譯影片建立列表
+                    for (const video of ts.value.videos) {
+                        const caption = captionMap[video.name];
+                        list.push({
+                            name: video.name,
+                            translated: video.status === 'done',
+                            captioned: !!caption,
+                            published: caption?.published || false,
+                        });
+                    }
+
+                    return list;
+                });
+
+                const overviewStats = computed(() => {
+                    const list = overviewList.value;
+                    return {
+                        total: list.length,
+                        translated: list.filter(i => i.translated).length,
+                        captioned: list.filter(i => i.captioned).length,
+                        published: list.filter(i => i.published).length,
+                    };
+                });
+
+                const refreshOverview = async () => {
+                    await loadTranslateVideos();
+                    await loadIgCaptions();
+                };
+
                 // 監視視圖變化，重新初始化圖標並儲存
                 watch(currentView, (newView) => {
                     localStorage.setItem('currentView', newView);
@@ -4323,6 +4473,11 @@
                     if (newView === 'social') {
                         loadIgExamples();
                         loadIgDrafts();
+                        loadIgCaptions();
+                    }
+                    // 當切換到總覽時載入影片和文案資料
+                    if (newView === 'overview') {
+                        loadTranslateVideos();
                         loadIgCaptions();
                     }
                 });
@@ -4436,6 +4591,10 @@
                     igSaveCaption,
                     igDeleteCaption,
                     igTogglePublish,
+                    // 總覽 Dashboard
+                    overviewList,
+                    overviewStats,
+                    refreshOverview,
                 };
             }
         }).mount('#app');
