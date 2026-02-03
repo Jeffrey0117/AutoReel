@@ -256,6 +256,16 @@
             transition: width 300ms ease;
         }
 
+        .progress-bar-indeterminate {
+            width: 30%;
+            animation: indeterminate 1.5s ease-in-out infinite;
+        }
+
+        @keyframes indeterminate {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(400%); }
+        }
+
         .progress-stats {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -1629,10 +1639,12 @@
                         <div class="progress-section" style="padding: var(--space-3); margin-bottom: var(--space-4);">
                             <div class="progress-header">
                                 <span>{{ ts.progressText }}</span>
-                                <span>{{ ts.total > 0 ? Math.round((ts.completed + ts.failed) / ts.total * 100) : 0 }}%</span>
+                                <span v-if="ts.completed > 0 || ts.failed > 0">{{ ts.total > 0 ? Math.round((ts.completed + ts.failed) / ts.total * 100) : 0 }}%</span>
+                                <span v-else style="color: var(--text-muted);">處理中...</span>
                             </div>
                             <div class="progress-bar-container">
-                                <div class="progress-bar" :style="{ width: (ts.total > 0 ? ((ts.completed + ts.failed) / ts.total * 100) : 0) + '%' }"></div>
+                                <div v-if="ts.completed > 0 || ts.failed > 0" class="progress-bar" :style="{ width: (ts.total > 0 ? ((ts.completed + ts.failed) / ts.total * 100) : 0) + '%' }"></div>
+                                <div v-else class="progress-bar progress-bar-indeterminate"></div>
                             </div>
                             <div class="progress-stats" style="margin-top: var(--space-3);">
                                 <div class="stat-card">
