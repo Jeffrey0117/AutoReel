@@ -1553,13 +1553,6 @@
                             <h1 class="workflow-title">一鍵處理</h1>
                             <p class="workflow-subtitle">下載 → 翻譯 → 生成文案，全自動完成</p>
                         </div>
-                        <button class="btn btn-success execute-btn"
-                                @click="startFullProcess"
-                                :disabled="ts.isRunning || ts.videos.length === 0">
-                            <i :data-lucide="ts.isRunning ? 'loader-2' : 'zap'" style="width:18px;height:18px;"
-                               :class="{ 'spinning-icon': ts.isRunning }"></i>
-                            {{ ts.isRunning ? '處理中...' : '開始處理' }}
-                        </button>
                     </div>
 
                     <!-- 拖拉上傳 + URL 輸入 -->
