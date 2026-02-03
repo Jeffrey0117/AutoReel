@@ -1239,6 +1239,32 @@
             border-color: var(--text-primary);
         }
 
+        /* ===== Result Path ===== */
+        .result-path-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            margin-bottom: var(--space-2);
+        }
+
+        .result-path {
+            flex: 1;
+            padding: var(--space-1) var(--space-2);
+            background: var(--bg-primary);
+            border-radius: var(--radius-sm);
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .result-path:hover {
+            color: var(--text-primary);
+            background: var(--bg-card-hover);
+        }
+
         /* ===== Pipeline Stages ===== */
         .pipeline-queue {
             margin-bottom: var(--space-6);
@@ -1524,15 +1550,15 @@
                 <div v-if="currentView === 'workflow'">
                     <div class="workflow-header">
                         <div>
-                            <h1 class="workflow-title">{{ t('workflow.translateProject') }}</h1>
-                            <p class="workflow-subtitle">{{ t('workflow.translateDesc') }}</p>
+                            <h1 class="workflow-title">一鍵處理</h1>
+                            <p class="workflow-subtitle">下載 → 翻譯 → 生成文案，全自動完成</p>
                         </div>
                         <button class="btn btn-success execute-btn"
-                                @click="startTranslatePipeline"
+                                @click="startFullProcess"
                                 :disabled="ts.isRunning || ts.videos.length === 0">
-                            <i :data-lucide="ts.isRunning ? 'loader-2' : 'play'" style="width:18px;height:18px;"
+                            <i :data-lucide="ts.isRunning ? 'loader-2' : 'zap'" style="width:18px;height:18px;"
                                :class="{ 'spinning-icon': ts.isRunning }"></i>
-                            {{ ts.isRunning ? t('workflow.executing') : t('workflow.startExecute') }}
+                            {{ ts.isRunning ? '處理中...' : '開始處理' }}
                         </button>
                     </div>
 
@@ -1561,6 +1587,28 @@
                         <input type="file" ref="fileInput" style="display:none"
                                accept=".mp4,.mkv,.avi,.mov" multiple
                                @change="handleFileSelect($event)">
+                    </div>
+
+                    <!-- 處理完成結果 -->
+                    <div v-if="ts.lastResults.length > 0" class="card" style="margin-bottom: var(--space-4); border: 1px solid #22c55e;">
+                        <h3 class="card-title" style="color: #22c55e; margin-bottom: var(--space-3);">
+                            <i data-lucide="check-circle" style="width:18px;height:18px;"></i>
+                            處理完成
+                        </h3>
+                        <div v-for="result in ts.lastResults" :key="result.video" style="margin-bottom: var(--space-3); padding: var(--space-3); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                            <div style="font-weight: 600; margin-bottom: var(--space-2);">{{ result.video }}</div>
+                            <div v-if="result.srt_path" class="result-path-row">
+                                <span style="color: var(--text-muted); font-size: 0.75rem;">字幕：</span>
+                                <code class="result-path" @click="copyToClipboard(result.srt_path)">{{ result.srt_path }}</code>
+                                <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.7rem;" @click="copyToClipboard(result.srt_path)">複製</button>
+                            </div>
+                            <div v-if="result.caption_path" class="result-path-row">
+                                <span style="color: var(--text-muted); font-size: 0.75rem;">文案：</span>
+                                <code class="result-path" @click="copyToClipboard(result.caption_path)">{{ result.caption_path }}</code>
+                                <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.7rem;" @click="copyToClipboard(result.caption_path)">複製</button>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" style="font-size: 0.75rem;" @click="ts.lastResults = []">清除結果</button>
                     </div>
 
                     <!-- URL 下載進度 -->
@@ -3087,6 +3135,7 @@
                     editingVideo: null,
                     editingName: '',
                     currentVideo: null,
+                    lastResults: [],
                 });
                 const fileInput = ref(null);
                 const translateLogContainer = ref(null);
@@ -3307,6 +3356,35 @@
                             ts.value.showLogs = true;
                             addTranslateLog('info', '[系統] Pipeline 已啟動');
                             showToast('翻譯 Pipeline 已啟動', 'success');
+                        } else {
+                            showToast(result.message || '啟動失敗', 'warning');
+                        }
+                    } catch (e) {
+                        showToast('啟動失敗: ' + e.message, 'error');
+                    }
+                };
+
+                // 完整處理流程：翻譯 + 自動生成文案
+                const startFullProcess = async () => {
+                    if (ts.value.isRunning) return;
+                    ts.value.lastResults = [];
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/translate/start`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ force: false, auto_caption: true })
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            ts.value.isRunning = true;
+                            ts.value.processingQueue = [];
+                            ts.value.completed = 0;
+                            ts.value.failed = 0;
+                            ts.value.progressText = '啟動中...';
+                            ts.value.showLogs = true;
+                            addTranslateLog('info', '[系統] 開始處理：翻譯 → 生成文案');
+                            showToast('開始處理', 'success');
                         } else {
                             showToast(result.message || '啟動失敗', 'warning');
                         }
@@ -3564,10 +3642,23 @@
                             ts.value.currentVideo = null;
                             ts.value.progressText = `完成! ${data.success_count || 0} 成功, ${data.failed_count || 0} 失敗`;
                             addTranslateLog('info', `[Pipeline] 完成! 成功: ${data.success_count || 0}, 失敗: ${data.failed_count || 0}`);
-                            showToast('翻譯 Pipeline 完成', 'success');
+                            showToast('翻譯完成', 'success');
                             // Refresh video list
                             loadTranslateVideos();
                             loadTranslateResults();
+                            // 收集結果路徑
+                            if (data.results && data.results.length > 0) {
+                                ts.value.lastResults = data.results.map(r => ({
+                                    video: r.video,
+                                    srt_path: r.srt_path || `subtitles/${r.video.replace(/\.[^/.]+$/, '')}.srt`,
+                                    caption_path: r.caption_path || null
+                                }));
+                            }
+                            // 自動生成文案
+                            if (data.auto_caption) {
+                                addTranslateLog('info', '[系統] 開始生成文案...');
+                                igGenerateAll();
+                            }
                             break;
 
                         case 'translate_auto_queued':
@@ -4553,6 +4644,7 @@
                     fileInput,
                     translateLogContainer,
                     startTranslatePipeline,
+                    startFullProcess,
                     startTranslateSingle,
                     handleFileDrop,
                     triggerFileInput,
