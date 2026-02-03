@@ -349,7 +349,7 @@ class TranslateService:
         return True
 
     def _run_full_process(self, url: str, auto_caption: bool = True):
-        """Run complete process: Download → Translate → Auto-rename → Generate Caption."""
+        """Run complete process: Download → Transcribe → Rename → Translate → Draft → Caption."""
         downloaded_file = None
         try:
             # Step 1: Download
@@ -372,37 +372,103 @@ class TranslateService:
                 "data": {"status": "completed", "url": url, "filename": downloaded_file.name, "progress": 100}
             })
 
-            # Mark download done, start translation
+            # Mark download done, start processing
             with self._lock:
                 self.is_downloading = False
                 self.is_running = True
 
-            # Step 2: Translate
-            video_name = downloaded_file.stem
+            old_video_name = downloaded_file.stem
+            video_name = old_video_name  # Will be updated after rename
+
+            # Step 2: Transcribe only (get entries)
             self._broadcast({
                 "type": "translate_pipeline_start",
-                "data": {"total": 1, "step": "翻譯中..."}
+                "data": {"total": 1, "step": "辨識中..."}
+            })
+            self._progress_callback("transcribe_start", {"video": old_video_name, "total": 1, "completed": 0})
+
+            from translate_video import TranslationWorkflow
+            workflow = TranslationWorkflow(str(self.config_path))
+            entries = workflow.subtitle_gen.transcribe(str(downloaded_file))
+
+            if not entries:
+                self._broadcast({
+                    "type": "translate_pipeline_done",
+                    "data": {"success_count": 0, "failed_count": 1, "error": "辨識失敗", "results": []}
+                })
+                return
+
+            # Step 3: Generate title from transcription and rename
+            self._broadcast({
+                "type": "translate_rename_start",
+                "data": {"video": old_video_name, "step": "生成標題中..."}
             })
 
-            result = self._translate_single_video(str(downloaded_file))
+            # Extract text from entries for title generation
+            transcript_text = "\n".join([e.text for e in entries[:20] if e.text])
+            new_title = self._generate_title_from_text(transcript_text)
 
-            # Step 2.5: Generate suggested title (but don't rename to avoid breaking draft)
-            suggested_title = None
-            if result:
-                self._broadcast({
-                    "type": "translate_rename_start",
-                    "data": {"video": video_name, "step": "生成標題中..."}
-                })
-                suggested_title = self._generate_title_from_srt(video_name)
-                if suggested_title:
+            if new_title and new_title != old_video_name:
+                # Rename video file
+                new_video_path = downloaded_file.parent / f"{new_title}{downloaded_file.suffix}"
+                if not new_video_path.exists():
+                    downloaded_file.rename(new_video_path)
+                    downloaded_file = new_video_path
+                    video_name = new_title
                     self._broadcast({
-                        "type": "translate_title_generated",
-                        "data": {"video": video_name, "suggested_title": suggested_title}
+                        "type": "translate_renamed",
+                        "data": {"old_name": old_video_name, "new_name": new_title}
                     })
 
-            # Step 3: Generate Caption (if translation succeeded and auto_caption enabled)
+            # Step 4: Save transcription with new name
+            workflow.subtitle_gen.export_srt(
+                entries,
+                str(self.subtitles_folder / f"{video_name}_en.srt"),
+                use_translated=False
+            )
+
+            # Step 5: Translate
+            self._broadcast({
+                "type": "translate_step",
+                "data": {"video": video_name, "step": "翻譯中..."}
+            })
+            self._progress_callback("translate_start", {"video": video_name})
+
+            entries = workflow.subtitle_gen.translate_entries(entries)
+
+            # Save translated subtitles
+            workflow.subtitle_gen.export_srt(
+                entries,
+                str(self.subtitles_folder / f"{video_name}_zh.srt"),
+                use_translated=True
+            )
+            workflow.subtitle_gen.export_json(
+                entries,
+                str(self.subtitles_folder / f"{video_name}.json")
+            )
+
+            self._progress_callback("translate_done", {"video": video_name})
+
+            # Step 6: Generate draft
+            self._broadcast({
+                "type": "translate_step",
+                "data": {"video": video_name, "step": "生成草稿中..."}
+            })
+            self._progress_callback("draft_start", {"video": video_name})
+
+            draft_name = self._generate_draft(workflow, str(downloaded_file), video_name, entries)
+
+            if draft_name:
+                self._progress_callback("video_complete", {
+                    "video": video_name,
+                    "draft": draft_name,
+                    "elapsed": 0,
+                    "stats": {"total": 1, "completed": 1, "failed": 0}
+                })
+
+            # Step 7: Generate Caption
             caption_path = None
-            if result and auto_caption:
+            if draft_name and auto_caption:
                 self._broadcast({
                     "type": "translate_caption_start",
                     "data": {"video": video_name, "step": "生成文案中..."}
@@ -413,7 +479,6 @@ class TranslateService:
             srt_path = str(self.subtitles_folder / f"{video_name}_zh.srt")
             results = [{
                 "video": video_name,
-                "suggested_title": suggested_title,
                 "srt_path": srt_path if Path(srt_path).exists() else None,
                 "caption_path": caption_path
             }]
@@ -421,10 +486,10 @@ class TranslateService:
             self._broadcast({
                 "type": "translate_pipeline_done",
                 "data": {
-                    "success_count": 1 if result else 0,
-                    "failed_count": 0 if result else 1,
+                    "success_count": 1 if draft_name else 0,
+                    "failed_count": 0 if draft_name else 1,
                     "results": results,
-                    "auto_caption": False  # Already done
+                    "auto_caption": False
                 }
             })
 
@@ -691,6 +756,124 @@ class TranslateService:
         except Exception as e:
             self._broadcast({
                 "type": "translate_rename_error",
+                "data": {"video": video_name, "error": str(e)}
+            })
+            return None
+
+    def _generate_title_from_text(self, transcript_text: str) -> Optional[str]:
+        """Generate a short Chinese title from transcript text using AI."""
+        try:
+            import requests
+
+            if not transcript_text or len(transcript_text.strip()) < 10:
+                return None
+
+            # Get API config
+            config = self.get_config()
+            translation_config = config.get("translation", {})
+            api_key = translation_config.get("api_key") or os.environ.get(
+                translation_config.get("api_key_env", "DEEPSEEK_API_KEY")
+            )
+            base_url = translation_config.get("base_url", "https://api.deepseek.com")
+            model = translation_config.get("model", "deepseek-chat")
+
+            if not api_key:
+                return None
+
+            prompt = f"""根據以下影片語音內容，生成一個簡短的中文標題（10-20字）。
+標題要能概括影片主題，吸引人點擊。
+只輸出標題本身，不要加引號或其他說明。
+
+語音內容：
+{transcript_text[:2000]}"""
+
+            response = requests.post(
+                f"{base_url}/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 50,
+                    "temperature": 0.7
+                },
+                timeout=30
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                title = result["choices"][0]["message"]["content"].strip()
+                # Clean up title
+                title = title.strip('"\'""')
+                title = title.replace('\n', ' ').strip()
+                invalid_chars = '<>:"/\\|?*'
+                for char in invalid_chars:
+                    title = title.replace(char, '')
+                if len(title) > 50:
+                    title = title[:50]
+                return title if title else None
+
+            return None
+
+        except Exception as e:
+            self._broadcast({
+                "type": "translate_rename_error",
+                "data": {"error": str(e)}
+            })
+            return None
+
+    def _generate_draft(self, workflow, video_path: str, video_name: str, entries) -> Optional[str]:
+        """Generate Jianying draft using the workflow."""
+        try:
+            import copy
+
+            output_name = f"{workflow.output_prefix}{video_name}"
+            output_folder = workflow.jianying_draft_root / output_name
+
+            # Load template
+            template_data = workflow._load_template()
+            if not template_data:
+                return None
+
+            draft_data = copy.deepcopy(template_data)
+
+            # Clean template texts
+            draft_data = workflow._clean_template_texts(draft_data, keep_count=2)
+
+            # Replace video
+            draft_data = workflow._replace_video_in_draft(draft_data, video_path)
+
+            # Get video duration
+            video_duration = draft_data.get("duration", 0)
+
+            # Update template texts
+            draft_data = workflow._update_template_texts(draft_data, video_name, video_duration)
+
+            # Add subtitles
+            draft_data = workflow._add_subtitles_to_draft(draft_data, entries, template_data)
+
+            # Create output folder
+            output_folder.mkdir(parents=True, exist_ok=True)
+
+            # Save draft
+            import json
+            draft_file = output_folder / "draft_content.json"
+            with open(draft_file, 'w', encoding='utf-8') as f:
+                json.dump(draft_data, f, ensure_ascii=False, indent=2)
+
+            # Copy draft_meta_info.json if exists in template
+            template_meta = workflow.jianying_draft_root / workflow.template_name / "draft_meta_info.json"
+            if template_meta.exists():
+                import shutil
+                shutil.copy(template_meta, output_folder / "draft_meta_info.json")
+
+            return output_name
+
+        except Exception as e:
+            self._broadcast({
+                "type": "translate_draft_error",
                 "data": {"video": video_name, "error": str(e)}
             })
             return None
