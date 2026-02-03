@@ -349,7 +349,7 @@ class TranslateService:
         return True
 
     def _run_full_process(self, url: str, auto_caption: bool = True):
-        """Run complete process: Download → Translate → Generate Caption."""
+        """Run complete process: Download → Translate → Auto-rename → Generate Caption."""
         downloaded_file = None
         try:
             # Step 1: Download
@@ -385,6 +385,22 @@ class TranslateService:
             })
 
             result = self._translate_single_video(str(downloaded_file))
+
+            # Step 2.5: Auto-rename based on subtitle content
+            if result:
+                self._broadcast({
+                    "type": "translate_rename_start",
+                    "data": {"video": video_name, "step": "生成標題中..."}
+                })
+                new_name = self._generate_title_from_srt(video_name)
+                if new_name and new_name != video_name:
+                    renamed = self._rename_video_and_subtitles(video_name, new_name)
+                    if renamed:
+                        self._broadcast({
+                            "type": "translate_renamed",
+                            "data": {"old_name": video_name, "new_name": new_name}
+                        })
+                        video_name = new_name
 
             # Step 3: Generate Caption (if translation succeeded and auto_caption enabled)
             caption_path = None
@@ -598,6 +614,125 @@ class TranslateService:
                 "data": {"video": video_name, "error": str(e)}
             })
             return None
+
+    def _generate_title_from_srt(self, video_name: str) -> Optional[str]:
+        """Generate a short title from SRT content using AI."""
+        try:
+            import requests
+            import json
+
+            srt_path = self.subtitles_folder / f"{video_name}_zh.srt"
+            if not srt_path.exists():
+                return None
+
+            # Read and parse SRT
+            with open(srt_path, 'r', encoding='utf-8') as f:
+                srt_content = f.read()
+
+            text_lines = []
+            for block in srt_content.strip().split('\n\n'):
+                lines = block.strip().split('\n')
+                if len(lines) >= 3:
+                    text_lines.append(' '.join(lines[2:]))
+
+            subtitles_text = '\n'.join(text_lines[:20])  # Only use first 20 lines
+            if not subtitles_text:
+                return None
+
+            # Get API config
+            config = self.get_config()
+            translation_config = config.get("translation", {})
+            api_key = translation_config.get("api_key") or os.environ.get(
+                translation_config.get("api_key_env", "DEEPSEEK_API_KEY")
+            )
+            base_url = translation_config.get("base_url", "https://api.deepseek.com")
+            model = translation_config.get("model", "deepseek-chat")
+
+            if not api_key:
+                return None
+
+            prompt = f"""根據以下影片字幕內容，生成一個簡短的中文標題（10-20字）。
+標題要能概括影片主題，吸引人點擊。
+只輸出標題本身，不要加引號或其他說明。
+
+字幕內容：
+{subtitles_text}"""
+
+            response = requests.post(
+                f"{base_url}/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 50,
+                    "temperature": 0.7
+                },
+                timeout=30
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                title = result["choices"][0]["message"]["content"].strip()
+                # Clean up title - remove quotes, newlines, invalid chars
+                title = title.strip('"\'""')
+                title = title.replace('\n', ' ').strip()
+                invalid_chars = '<>:"/\\|?*'
+                for char in invalid_chars:
+                    title = title.replace(char, '')
+                # Limit length
+                if len(title) > 50:
+                    title = title[:50]
+                return title if title else None
+
+            return None
+
+        except Exception as e:
+            self._broadcast({
+                "type": "translate_rename_error",
+                "data": {"video": video_name, "error": str(e)}
+            })
+            return None
+
+    def _rename_video_and_subtitles(self, old_name: str, new_name: str) -> bool:
+        """Rename video file and all related subtitle files."""
+        try:
+            # Find and rename video file
+            video_extensions = ['.mp4', '.mkv', '.avi', '.mov']
+            video_renamed = False
+
+            for ext in video_extensions:
+                old_video = self.videos_folder / f"{old_name}{ext}"
+                if old_video.exists():
+                    new_video = self.videos_folder / f"{new_name}{ext}"
+                    old_video.rename(new_video)
+                    video_renamed = True
+                    break
+
+            # Rename subtitle files
+            subtitle_patterns = [
+                (f"{old_name}.json", f"{new_name}.json"),
+                (f"{old_name}.srt", f"{new_name}.srt"),
+                (f"{old_name}_zh.srt", f"{new_name}_zh.srt"),
+                (f"{old_name}_en.srt", f"{new_name}_en.srt"),
+            ]
+
+            for old_pattern, new_pattern in subtitle_patterns:
+                old_path = self.subtitles_folder / old_pattern
+                if old_path.exists():
+                    new_path = self.subtitles_folder / new_pattern
+                    old_path.rename(new_path)
+
+            return video_renamed
+
+        except Exception as e:
+            self._broadcast({
+                "type": "translate_rename_error",
+                "data": {"old_name": old_name, "new_name": new_name, "error": str(e)}
+            })
+            return False
 
     def _run_url_download(self, url: str, auto_translate: bool = True):
         """Download from URL using yt-dlp (called from background thread)."""

@@ -3661,12 +3661,30 @@
                             break;
                         }
 
+                        case 'translate_rename_start':
+                            addTranslateLog('info', `[標題] 正在生成標題...`);
+                            break;
+
+                        case 'translate_renamed':
+                            addTranslateLog('success', `[標題] 已重命名: ${data.old_name} → ${data.new_name}`);
+                            showToast(`已重命名為: ${data.new_name}`, 'success');
+                            loadTranslateVideos();
+                            break;
+
+                        case 'translate_caption_start':
+                            addTranslateLog('info', `[文案] 正在生成文案...`);
+                            break;
+
+                        case 'translate_caption_done':
+                            addTranslateLog('success', `[文案] 生成完成: ${data.video}`);
+                            break;
+
                         case 'translate_pipeline_done':
                             ts.value.isRunning = false;
                             ts.value.currentVideo = null;
                             ts.value.progressText = `完成! ${data.success_count || 0} 成功, ${data.failed_count || 0} 失敗`;
-                            addTranslateLog('info', `[Pipeline] 完成! 成功: ${data.success_count || 0}, 失敗: ${data.failed_count || 0}`);
-                            showToast('翻譯完成', 'success');
+                            addTranslateLog('info', `[完成] 成功: ${data.success_count || 0}, 失敗: ${data.failed_count || 0}`);
+                            showToast('處理完成', 'success');
                             // Refresh video list
                             loadTranslateVideos();
                             loadTranslateResults();
