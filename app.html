@@ -1601,6 +1601,11 @@
                         </h3>
                         <div v-for="result in ts.lastResults" :key="result.video" style="margin-bottom: var(--space-3); padding: var(--space-3); background: var(--bg-secondary); border-radius: var(--radius-md);">
                             <div style="font-weight: 600; margin-bottom: var(--space-2);">{{ result.video }}</div>
+                            <div v-if="result.suggested_title" class="result-path-row" style="background: rgba(34, 197, 94, 0.1); padding: 8px; border-radius: 4px; margin-bottom: 8px;">
+                                <span style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">建議標題：</span>
+                                <code class="result-path" style="color: #22c55e; flex: 1;" @click="copyToClipboard(result.suggested_title)">{{ result.suggested_title }}</code>
+                                <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.7rem; border-color: #22c55e; color: #22c55e;" @click="copyToClipboard(result.suggested_title)">複製</button>
+                            </div>
                             <div v-if="result.srt_path" class="result-path-row">
                                 <span style="color: var(--text-muted); font-size: 0.75rem;">字幕：</span>
                                 <code class="result-path" @click="copyToClipboard(result.srt_path)">{{ result.srt_path }}</code>
@@ -3677,10 +3682,8 @@
                             addTranslateLog('info', `[標題] 正在生成標題...`);
                             break;
 
-                        case 'translate_renamed':
-                            addTranslateLog('success', `[標題] 已重命名: ${data.old_name} → ${data.new_name}`);
-                            showToast(`已重命名為: ${data.new_name}`, 'success');
-                            loadTranslateVideos();
+                        case 'translate_title_generated':
+                            addTranslateLog('success', `[標題] 建議標題: ${data.suggested_title}`);
                             break;
 
                         case 'translate_caption_start':
@@ -3704,6 +3707,7 @@
                             if (data.results && data.results.length > 0) {
                                 ts.value.lastResults = data.results.map(r => ({
                                     video: r.video,
+                                    suggested_title: r.suggested_title || null,
                                     srt_path: r.srt_path || `subtitles/${r.video.replace(/\.[^/.]+$/, '')}.srt`,
                                     caption_path: r.caption_path || null
                                 }));

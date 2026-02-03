@@ -386,21 +386,19 @@ class TranslateService:
 
             result = self._translate_single_video(str(downloaded_file))
 
-            # Step 2.5: Auto-rename based on subtitle content
+            # Step 2.5: Generate suggested title (but don't rename to avoid breaking draft)
+            suggested_title = None
             if result:
                 self._broadcast({
                     "type": "translate_rename_start",
                     "data": {"video": video_name, "step": "生成標題中..."}
                 })
-                new_name = self._generate_title_from_srt(video_name)
-                if new_name and new_name != video_name:
-                    renamed = self._rename_video_and_subtitles(video_name, new_name)
-                    if renamed:
-                        self._broadcast({
-                            "type": "translate_renamed",
-                            "data": {"old_name": video_name, "new_name": new_name}
-                        })
-                        video_name = new_name
+                suggested_title = self._generate_title_from_srt(video_name)
+                if suggested_title:
+                    self._broadcast({
+                        "type": "translate_title_generated",
+                        "data": {"video": video_name, "suggested_title": suggested_title}
+                    })
 
             # Step 3: Generate Caption (if translation succeeded and auto_caption enabled)
             caption_path = None
@@ -415,6 +413,7 @@ class TranslateService:
             srt_path = str(self.subtitles_folder / f"{video_name}_zh.srt")
             results = [{
                 "video": video_name,
+                "suggested_title": suggested_title,
                 "srt_path": srt_path if Path(srt_path).exists() else None,
                 "caption_path": caption_path
             }]
