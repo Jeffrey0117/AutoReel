@@ -22,6 +22,11 @@ class UrlDownloadRequest(BaseModel):
     auto_translate: bool = True
 
 
+class FullProcessRequest(BaseModel):
+    url: str
+    auto_caption: bool = True
+
+
 class RenameRequest(BaseModel):
     new_name: str
 
@@ -122,6 +127,19 @@ async def download_url(body: UrlDownloadRequest):
         auto_translate=body.auto_translate
     )
     return {"success": started, "message": "Download started" if started else "Failed to start download"}
+
+
+@router.post("/process-url")
+async def process_url(body: FullProcessRequest):
+    """Complete process from URL: Download → Translate → Generate Caption."""
+    if translate_service.is_downloading or translate_service.is_running:
+        return {"success": False, "message": "Already processing"}
+
+    started = translate_service.start_full_process(
+        url=body.url,
+        auto_caption=body.auto_caption
+    )
+    return {"success": started, "message": "Processing started" if started else "Failed to start"}
 
 
 # --- Results ---

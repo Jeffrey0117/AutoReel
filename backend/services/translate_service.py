@@ -332,6 +332,273 @@ class TranslateService:
         thread.start()
         return True
 
+    def start_full_process(self, url: str, auto_caption: bool = True):
+        """Complete process: Download → Translate → Generate Caption."""
+        with self._lock:
+            if self.is_downloading or self.is_running:
+                return False
+            self.is_downloading = True
+
+        thread = threading.Thread(
+            target=self._run_full_process,
+            args=(url, auto_caption),
+            daemon=True,
+            name="translate-full-process"
+        )
+        thread.start()
+        return True
+
+    def _run_full_process(self, url: str, auto_caption: bool = True):
+        """Run complete process: Download → Translate → Generate Caption."""
+        downloaded_file = None
+        try:
+            # Step 1: Download
+            self._broadcast({
+                "type": "translate_download_progress",
+                "data": {"status": "starting", "url": url, "progress": 0, "step": "下載中..."}
+            })
+
+            downloaded_file = self._download_video(url)
+
+            if not downloaded_file:
+                self._broadcast({
+                    "type": "translate_download_progress",
+                    "data": {"status": "failed", "url": url, "error": "下載失敗"}
+                })
+                return
+
+            self._broadcast({
+                "type": "translate_download_progress",
+                "data": {"status": "completed", "url": url, "filename": downloaded_file.name, "progress": 100}
+            })
+
+            # Mark download done, start translation
+            with self._lock:
+                self.is_downloading = False
+                self.is_running = True
+
+            # Step 2: Translate
+            video_name = downloaded_file.stem
+            self._broadcast({
+                "type": "translate_pipeline_start",
+                "data": {"total": 1, "step": "翻譯中..."}
+            })
+
+            result = self._translate_single_video(str(downloaded_file))
+
+            # Step 3: Generate Caption (if translation succeeded and auto_caption enabled)
+            caption_path = None
+            if result and auto_caption:
+                self._broadcast({
+                    "type": "translate_caption_start",
+                    "data": {"video": video_name, "step": "生成文案中..."}
+                })
+                caption_path = self._generate_caption(video_name)
+
+            # Build result
+            srt_path = str(self.subtitles_folder / f"{video_name}_zh.srt")
+            results = [{
+                "video": video_name,
+                "srt_path": srt_path if Path(srt_path).exists() else None,
+                "caption_path": caption_path
+            }]
+
+            self._broadcast({
+                "type": "translate_pipeline_done",
+                "data": {
+                    "success_count": 1 if result else 0,
+                    "failed_count": 0 if result else 1,
+                    "results": results,
+                    "auto_caption": False  # Already done
+                }
+            })
+
+        except Exception as e:
+            self._broadcast({
+                "type": "translate_pipeline_done",
+                "data": {
+                    "success_count": 0,
+                    "failed_count": 1,
+                    "error": str(e),
+                    "results": []
+                }
+            })
+        finally:
+            with self._lock:
+                self.is_downloading = False
+                self.is_running = False
+
+    def _download_video(self, url: str) -> Optional[Path]:
+        """Download video using yt-dlp, return downloaded file path."""
+        self.videos_folder.mkdir(parents=True, exist_ok=True)
+
+        output_template = str(self.videos_folder / "%(title)s.%(ext)s")
+        cmd = [
+            sys.executable, "-m", "yt_dlp",
+            "--no-playlist",
+            "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+            "--merge-output-format", "mp4",
+            "-o", output_template,
+            "--newline",
+            "--print", "after_move:filepath",
+            url
+        ]
+
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding='utf-8',
+            errors='replace'
+        )
+
+        downloaded_path = None
+        for line in process.stdout:
+            line = line.strip()
+            if not line:
+                continue
+
+            # Parse progress
+            if '[download]' in line and '%' in line:
+                try:
+                    pct_str = line.split('%')[0].split()[-1]
+                    pct = float(pct_str)
+                    self._broadcast({
+                        "type": "translate_download_progress",
+                        "data": {"status": "downloading", "url": url, "progress": pct}
+                    })
+                except (ValueError, IndexError):
+                    pass
+            elif '[Merger]' in line:
+                self._broadcast({
+                    "type": "translate_download_progress",
+                    "data": {"status": "processing", "url": url, "progress": 95}
+                })
+            # Capture final file path
+            elif line.endswith('.mp4') and self.videos_folder.name in line:
+                downloaded_path = Path(line)
+
+        process.wait()
+
+        if process.returncode == 0 and downloaded_path and downloaded_path.exists():
+            return downloaded_path
+
+        # Fallback: find most recently modified mp4
+        mp4_files = list(self.videos_folder.glob("*.mp4"))
+        if mp4_files:
+            return max(mp4_files, key=lambda f: f.stat().st_mtime)
+
+        return None
+
+    def _translate_single_video(self, video_path: str) -> Optional[str]:
+        """Translate a single video, return draft name if successful."""
+        try:
+            from translate_video import TranslationWorkflow
+
+            workflow = TranslationWorkflow(str(self.config_path))
+            video_name = Path(video_path).stem
+
+            self._progress_callback("transcribe_start", {
+                "video": video_name, "total": 1, "completed": 0
+            })
+
+            result = workflow.process_video(video_path, force=False)
+
+            if result:
+                self._progress_callback("video_complete", {
+                    "video": video_name,
+                    "draft": result,
+                    "elapsed": 0,
+                    "stats": {"total": 1, "completed": 1, "failed": 0}
+                })
+                return result
+            else:
+                self._progress_callback("video_error", {
+                    "video": video_name,
+                    "error": "Processing returned None"
+                })
+                return None
+
+        except Exception as e:
+            self._progress_callback("video_error", {
+                "video": Path(video_path).stem,
+                "error": str(e)
+            })
+            return None
+
+    def _generate_caption(self, video_name: str) -> Optional[str]:
+        """Generate IG caption for translated video."""
+        try:
+            from services.caption_service import caption_service
+
+            # Find the SRT file
+            srt_path = self.subtitles_folder / f"{video_name}_zh.srt"
+            if not srt_path.exists():
+                self._broadcast({
+                    "type": "translate_caption_error",
+                    "data": {"video": video_name, "error": "SRT 檔案不存在"}
+                })
+                return None
+
+            # Read SRT content and extract text
+            with open(srt_path, 'r', encoding='utf-8') as f:
+                srt_content = f.read()
+
+            # Parse SRT to extract text lines
+            import re
+            text_lines = []
+            for block in srt_content.strip().split('\n\n'):
+                lines = block.strip().split('\n')
+                if len(lines) >= 3:
+                    text_lines.append(' '.join(lines[2:]))
+            subtitles_text = '\n'.join(text_lines)
+
+            if not subtitles_text:
+                self._broadcast({
+                    "type": "translate_caption_error",
+                    "data": {"video": video_name, "error": "無法從 SRT 提取字幕"}
+                })
+                return None
+
+            # Generate caption using caption service's internal method
+            config = caption_service._read_config()
+            examples = config.get("ig_caption", {}).get("examples", [])
+
+            if not examples:
+                self._broadcast({
+                    "type": "translate_caption_error",
+                    "data": {"video": video_name, "error": "請先新增至少一個風格範例"}
+                })
+                return None
+
+            caption = caption_service._call_deepseek_api(subtitles_text, examples, config)
+
+            if not caption:
+                self._broadcast({
+                    "type": "translate_caption_error",
+                    "data": {"video": video_name, "error": "API 呼叫失敗"}
+                })
+                return None
+
+            # Save caption
+            output_path = self.subtitles_folder / f"{video_name}_ig_caption.txt"
+            output_path.write_text(caption, encoding="utf-8")
+
+            self._broadcast({
+                "type": "translate_caption_done",
+                "data": {"video": video_name, "path": str(output_path)}
+            })
+
+            return str(output_path)
+
+        except Exception as e:
+            self._broadcast({
+                "type": "translate_caption_error",
+                "data": {"video": video_name, "error": str(e)}
+            })
+            return None
+
     def _run_url_download(self, url: str, auto_translate: bool = True):
         """Download from URL using yt-dlp (called from background thread)."""
         try:

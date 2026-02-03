@@ -1576,12 +1576,13 @@
                             <input type="text"
                                    v-model="ts.urlInput"
                                    placeholder="貼上 YouTube / IG 網址..."
-                                   @keyup.enter="downloadFromUrl"
-                                   :disabled="ts.isDownloading">
-                            <button class="btn btn-primary"
-                                    @click.stop="downloadFromUrl"
-                                    :disabled="!ts.urlInput.trim() || ts.isDownloading">
-                                {{ ts.isDownloading ? '下載中...' : '下載' }}
+                                   @keyup.enter="startUrlProcess"
+                                   :disabled="ts.isDownloading || ts.isRunning">
+                            <button class="btn btn-success"
+                                    @click.stop="startUrlProcess"
+                                    :disabled="!ts.urlInput.trim() || ts.isDownloading || ts.isRunning">
+                                <i :data-lucide="ts.isDownloading || ts.isRunning ? 'loader-2' : 'zap'" style="width:16px;height:16px;" :class="{ 'spinning-icon': ts.isDownloading || ts.isRunning }"></i>
+                                {{ ts.isDownloading ? '下載中...' : ts.isRunning ? '處理中...' : '開始處理' }}
                             </button>
                         </div>
                         <input type="file" ref="fileInput" style="display:none"
@@ -3489,6 +3490,36 @@
                     }
                 };
 
+                // 從 URL 開始完整處理流程：下載 → 翻譯 → 生成文案
+                const startUrlProcess = async () => {
+                    const url = ts.value.urlInput.trim();
+                    if (!url) return;
+
+                    ts.value.lastResults = [];
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/translate/process-url`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ url, auto_caption: true })
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            ts.value.isDownloading = true;
+                            ts.value.downloadStatus = { url, status: 'starting', progress: 0 };
+                            ts.value.urlInput = '';
+                            ts.value.showLogs = true;
+                            addTranslateLog('info', `[開始處理] ${url}`);
+                            addTranslateLog('info', `[流程] 下載 → 翻譯 → 生成文案`);
+                            showToast('開始處理...', 'info');
+                        } else {
+                            showToast(result.message || '啟動失敗', 'warning');
+                        }
+                    } catch (e) {
+                        showToast('啟動失敗: ' + e.message, 'error');
+                    }
+                };
+
                 const deleteTranslateVideo = async (filename) => {
                     try {
                         const res = await fetch(`${API_BASE}/api/translate/videos/${encodeURIComponent(filename)}`, {
@@ -4650,6 +4681,7 @@
                     triggerFileInput,
                     handleFileSelect,
                     downloadFromUrl,
+                    startUrlProcess,
                     deleteTranslateVideo,
                     startRename,
                     renameTranslateVideo,
