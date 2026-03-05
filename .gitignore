@@ -34,3 +34,9 @@ Thumbs.db
 
 # Jianying draft output
 翻譯專案_*/
+翻譯專案/
+draft_meta_info.json
+draft_content.json
+
+# Generated HTML files with hardcoded paths
+app.html
