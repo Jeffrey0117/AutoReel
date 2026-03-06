@@ -5,6 +5,17 @@ from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 from pathlib import Path
 import asyncio
+import os
+
+# Load .env from project root
+_env_file = Path(__file__).parent.parent / ".env"
+if _env_file.exists():
+    with open(_env_file, encoding="utf-8") as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _key, _, _val = _line.partition("=")
+                os.environ.setdefault(_key.strip(), _val.strip())
 
 from models import init_db
 from api.routes import router
@@ -12,10 +23,15 @@ from api.youtube_routes import router as youtube_router
 from api.ig_ytdlp_routes import router as ig_ytdlp_router
 from api.translate_routes import router as translate_router
 from api.caption_routes import router as caption_router
+from api.publish_routes import router as publish_router
+from api.draft_routes import router as draft_router
 from api.websocket import manager
 from services.downloader import download_service
 from services.translate_service import translate_service
 from services.caption_service import caption_service
+from services.ig_publisher import ig_publisher
+from services.telegram_bot import telegram_bot_service
+from services.telegram_notifications import TelegramNotifier
 
 # Project root (parent of backend/)
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -26,18 +42,39 @@ async def lifespan(app: FastAPI):
     # 啟動時初始化資料庫
     init_db()
 
+    loop = asyncio.get_running_loop()
+
     # 設定 translate_service 的 event loop 和 WebSocket manager
-    translate_service.set_event_loop(asyncio.get_running_loop())
+    translate_service.set_event_loop(loop)
     translate_service.set_ws_manager(manager)
 
     # 設定 caption_service 的 event loop 和 WebSocket manager
-    caption_service.set_event_loop(asyncio.get_running_loop())
+    caption_service.set_event_loop(loop)
     caption_service.set_ws_manager(manager)
+
+    # 設定 ig_publisher 的 event loop 和 WebSocket manager
+    ig_publisher.set_event_loop(loop)
+    ig_publisher.set_ws_manager(manager)
+
+    # Telegram Bot
+    print(f"[main] TELEGRAM_BOT_TOKEN={'SET' if os.environ.get('TELEGRAM_BOT_TOKEN') else 'NOT SET'}")
+    telegram_bot_service.set_event_loop(loop)
+    telegram_bot_service.set_ws_manager(manager)
+    await telegram_bot_service.start()
+    print(f"[main] Telegram bot running: {telegram_bot_service._is_running}")
+
+    if telegram_bot_service._is_running:
+        notifier = TelegramNotifier(telegram_bot_service)
+        telegram_bot_service.notifier = notifier
+        manager.add_listener(notifier.on_broadcast)
 
     yield
     # 關閉時清理
+    await telegram_bot_service.stop()
     if download_service.driver:
         download_service.driver.quit()
+    # 關閉 IG 發文瀏覽器
+    await ig_publisher.close()
 
 
 app = FastAPI(
@@ -50,16 +87,7 @@ app = FastAPI(
 # CORS 設定 - 允許本地開發來源
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5500",
-        "http://localhost:5501",
-        "http://127.0.0.1:5500",
-        "http://127.0.0.1:5501",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ],
+    allow_origins=["*"],  # 允許所有來源（開發用）
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -71,6 +99,20 @@ app.include_router(youtube_router)
 app.include_router(ig_ytdlp_router)  # IG yt-dlp 備案路由
 app.include_router(translate_router)  # 翻譯 API 路由
 app.include_router(caption_router)   # IG 文案 API 路由
+app.include_router(publish_router)   # IG 發文 API 路由
+app.include_router(draft_router)    # 剪映草稿操作 API 路由
+
+# MCP Server — 自動把所有 FastAPI routes 變 MCP tools
+try:
+    from fastapi_mcp import FastApiMCP
+    mcp = FastApiMCP(
+        app,
+        name="AutoReel",
+        description="Video translation + JianYing draft automation",
+    )
+    mcp.mount()
+except ImportError:
+    pass  # fastapi-mcp not installed
 
 # 靜態檔案 - CSS
 styles_dir = PROJECT_ROOT / "styles"
@@ -118,6 +160,39 @@ async def download_status():
     return download_service.get_status()
 
 
+# --- 系統工具 ---
+
+@app.post("/api/system/open-folder")
+async def open_folder(body: dict):
+    """用系統檔案管理器開啟資料夾"""
+    import subprocess
+    import platform
+
+    folder_path = body.get("path", "")
+    if not folder_path:
+        return {"success": False, "error": "No path provided"}
+
+    # 將相對路徑轉為絕對路徑
+    folder = Path(folder_path)
+    if not folder.is_absolute():
+        folder = PROJECT_ROOT / folder_path
+
+    if not folder.exists():
+        folder.mkdir(parents=True, exist_ok=True)
+
+    try:
+        system = platform.system()
+        if system == "Windows":
+            subprocess.Popen(["explorer", str(folder)])
+        elif system == "Darwin":  # macOS
+            subprocess.Popen(["open", str(folder)])
+        else:  # Linux
+            subprocess.Popen(["xdg-open", str(folder)])
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 # --- 靜態 HTML 頁面 ---
 
 @app.get("/")
@@ -140,4 +215,4 @@ async def serve_html(name: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
