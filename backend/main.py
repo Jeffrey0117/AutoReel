@@ -93,6 +93,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Health check
+@app.get("/api/health")
+async def health():
+    return {"status": "ok", "service": "autoreel"}
+
+
 # 註冊 API 路由
 app.include_router(router)
 app.include_router(youtube_router)
