@@ -1,0 +1,8 @@
+{
+  "name": "autoreel",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "http-proxy": "^1.18.1"
+  }
+}

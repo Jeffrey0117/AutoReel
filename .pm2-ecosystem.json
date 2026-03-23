@@ -1,0 +1,16 @@
+{
+  "apps": [
+    {
+      "name": "autoreel",
+      "script": "server.js",
+      "cwd": "C:\\Users\\jeffb\\Desktop\\code\\workhub\\autoreel",
+      "env": {
+        "NODE_ENV": "production",
+        "PORT": "8001",
+        "TELEGRAM_PROXY": "https://tg-proxy.jeffby8.workers.dev"
+      },
+      "autorestart": true,
+      "max_restarts": 5
+    }
+  ]
+}
