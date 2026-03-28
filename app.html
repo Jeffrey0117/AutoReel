@@ -3225,7 +3225,7 @@
                 };
 
                 // ===== 下載功能 =====
-                const API_BASE = 'http://localhost:8000';
+                const API_BASE = location.hostname === 'localhost' ? 'http://localhost:8000' : '';
                 let downloadWs = null;
 
                 const showToast = (message, type = 'info', duration = 3000) => {
@@ -4097,7 +4097,9 @@
                         backendStatus.value = 'connecting';
                     }
 
-                    downloadWs = new WebSocket('ws://localhost:8000/ws');
+                    const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    const wsHost = location.hostname === 'localhost' ? 'localhost:8000' : location.host;
+                    downloadWs = new WebSocket(`${wsProto}//${wsHost}/ws`);
 
                     downloadWs.onopen = () => {
                         console.log('Download WebSocket connected');
