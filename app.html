@@ -3696,10 +3696,22 @@
 
                         case 'translate_pipeline_done':
                             ts.value.isRunning = false;
+                            ts.value.isDownloading = false;
                             ts.value.currentVideo = null;
+                            // Mark remaining queue items as error
+                            ts.value.processingQueue.forEach(item => {
+                                if (item.transcribe === 'active') item.transcribe = 'error';
+                                if (item.translate === 'active') item.translate = 'error';
+                                if (item.draft === 'active') item.draft = 'error';
+                            });
+                            ts.value.completed = data.success_count || 0;
+                            ts.value.failed = data.failed_count || 0;
                             ts.value.progressText = `完成! ${data.success_count || 0} 成功, ${data.failed_count || 0} 失敗`;
                             addTranslateLog('info', `[完成] 成功: ${data.success_count || 0}, 失敗: ${data.failed_count || 0}`);
-                            showToast('處理完成', 'success');
+                            if (data.error) addTranslateLog('error', `[錯誤] ${data.error}`);
+                            showToast(data.failed_count > 0 ? '處理失敗' : '處理完成', data.failed_count > 0 ? 'error' : 'success');
+                            // Clear queue after short delay so user can see final state
+                            setTimeout(() => { ts.value.processingQueue = []; }, 5000);
                             // Refresh video list
                             loadTranslateVideos();
                             loadTranslateResults();

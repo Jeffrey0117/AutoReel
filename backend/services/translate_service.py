@@ -405,7 +405,7 @@ class TranslateService:
             })
 
             # Extract text from entries for title generation
-            transcript_text = "\n".join([e.text for e in entries[:20] if e.text])
+            transcript_text = "\n".join([e.text_original for e in entries[:20] if e.text_original])
             new_title = self._generate_title_from_text(transcript_text)
 
             if new_title and new_title != old_video_name:
@@ -494,6 +494,9 @@ class TranslateService:
             })
 
         except Exception as e:
+            import traceback
+            print(f"[Pipeline Error] {e}")
+            traceback.print_exc()
             self._broadcast({
                 "type": "translate_pipeline_done",
                 "data": {
