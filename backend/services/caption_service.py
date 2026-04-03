@@ -139,7 +139,7 @@ class CaptionService:
         self.subtitles_folder.mkdir(parents=True, exist_ok=True)
         published = self._get_published_set()
         captions = []
-        for f in sorted(self.subtitles_folder.glob("*_ig_caption.txt")):
+        for f in sorted(self.subtitles_folder.glob("*_ig_caption.txt"), key=lambda x: x.stat().st_mtime, reverse=True):
             video_name = f.stem.replace("_ig_caption", "")
             try:
                 content = f.read_text(encoding="utf-8")
