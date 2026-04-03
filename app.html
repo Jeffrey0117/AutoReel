@@ -1731,6 +1731,10 @@
                                         :disabled="ts.isRunning">
                                     {{ ts.isRunning && ts.currentVideo === video.name ? '翻譯中...' : (video.status === 'done' ? '重新翻譯' : '翻譯') }}
                                 </button>
+                                <button v-if="video.status === 'done'"
+                                        class="btn btn-secondary"
+                                        style="padding: 4px 12px; font-size: 0.75rem;"
+                                        @click="showCaptionModal(video.name)">文案</button>
                                 <a v-if="video.status === 'done'"
                                    class="btn btn-secondary"
                                    :href="API_BASE + '/api/translate/results/' + video.name + '/srt'"
@@ -2648,6 +2652,27 @@
             </div>
         </div>
 
+        <!-- Caption preview modal -->
+        <div v-if="ts.captionModal.show" class="backend-modal-overlay" @click.self="ts.captionModal.show = false">
+            <div class="backend-modal" style="max-width: 500px;">
+                <div class="backend-modal-header">
+                    <div>
+                        <div class="backend-modal-title">{{ ts.captionModal.video }}</div>
+                        <div class="backend-modal-subtitle">IG 文案</div>
+                    </div>
+                </div>
+                <div class="backend-modal-content">
+                    <pre style="white-space: pre-wrap; word-break: break-word; font-size: 13px; line-height: 1.6; color: #e2e8f0; background: #1e293b; padding: 12px; border-radius: 8px; max-height: 400px; overflow-y: auto; margin: 0; user-select: all;">{{ ts.captionModal.content }}</pre>
+                </div>
+                <div class="backend-modal-actions">
+                    <button class="btn btn-secondary" @click="ts.captionModal.show = false">關閉</button>
+                    <button class="btn btn-primary" @click="copyCaptionContent">
+                        {{ ts.captionModal.copied ? '已複製！' : '複製文案' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div v-if="showBackendModal" class="backend-modal-overlay" @click.self="showBackendModal = false">
             <div class="backend-modal">
                 <div class="backend-modal-header">
@@ -3172,6 +3197,7 @@
                     currentVideo: null,
                     lastResults: [],
                     confirmReprocess: { show: false, video: '' },
+                    captionModal: { show: false, video: '', content: '', copied: false },
                 });
                 const fileInput = ref(null);
                 const translateLogContainer = ref(null);
@@ -3561,6 +3587,28 @@
                         downloadWs.send(JSON.stringify({ type: 'confirm_reprocess', confirmed }));
                     }
                     addTranslateLog('info', confirmed ? '[系統] 使用者確認重新處理' : '[系統] 使用者取消，已跳過');
+                };
+
+                const showCaptionModal = async (videoName) => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/caption/captions`);
+                        const data = await res.json();
+                        const match = (data.captions || []).find(c => c.video_name === videoName);
+                        ts.value.captionModal = {
+                            show: true,
+                            video: videoName,
+                            content: match ? match.content : '（尚未生成文案）',
+                            copied: false,
+                        };
+                    } catch (e) {
+                        showToast('載入文案失敗', 'error');
+                    }
+                };
+
+                const copyCaptionContent = () => {
+                    navigator.clipboard.writeText(ts.value.captionModal.content);
+                    ts.value.captionModal.copied = true;
+                    setTimeout(() => { ts.value.captionModal.copied = false; }, 2000);
                 };
 
                 const deleteTranslateVideo = async (filename) => {
@@ -4763,6 +4811,8 @@
                     downloadFromUrl,
                     startUrlProcess,
                     respondReprocess,
+                    showCaptionModal,
+                    copyCaptionContent,
                     deleteTranslateVideo,
                     startRename,
                     renameTranslateVideo,
