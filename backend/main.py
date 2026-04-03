@@ -133,9 +133,17 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
-            # 可以處理來自前端的訊息
             if data == "ping":
                 await websocket.send_json({"type": "pong"})
+            else:
+                # Try parsing JSON messages from frontend
+                try:
+                    import json
+                    msg = json.loads(data)
+                    if msg.get("type") == "confirm_reprocess":
+                        translate_service.confirm_reprocess(msg.get("confirmed", False))
+                except (json.JSONDecodeError, Exception):
+                    pass
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 

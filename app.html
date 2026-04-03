@@ -2624,6 +2624,30 @@
         </div>
 
         <!-- 後端未啟動 Modal -->
+        <!-- Reprocess confirmation dialog -->
+        <div v-if="ts.confirmReprocess.show" class="backend-modal-overlay">
+            <div class="backend-modal" style="max-width: 400px;">
+                <div class="backend-modal-header">
+                    <div class="icon" style="font-size:24px;">
+                        ⚠
+                    </div>
+                    <div>
+                        <div class="backend-modal-title">影片已處理過</div>
+                        <div class="backend-modal-subtitle">{{ ts.confirmReprocess.video }}</div>
+                    </div>
+                </div>
+                <div class="backend-modal-content">
+                    <div style="padding: 8px 0; color: #94a3b8; font-size: 14px;">
+                        這部影片已有翻譯字幕，重新處理會覆蓋現有結果。要繼續嗎？
+                    </div>
+                </div>
+                <div class="backend-modal-actions">
+                    <button class="btn btn-secondary" @click="respondReprocess(false)">跳過</button>
+                    <button class="btn btn-primary" @click="respondReprocess(true)">重新處理</button>
+                </div>
+            </div>
+        </div>
+
         <div v-if="showBackendModal" class="backend-modal-overlay" @click.self="showBackendModal = false">
             <div class="backend-modal">
                 <div class="backend-modal-header">
@@ -3147,6 +3171,7 @@
                     editingName: '',
                     currentVideo: null,
                     lastResults: [],
+                    confirmReprocess: { show: false, video: '' },
                 });
                 const fileInput = ref(null);
                 const translateLogContainer = ref(null);
@@ -3530,6 +3555,14 @@
                     }
                 };
 
+                const respondReprocess = (confirmed) => {
+                    ts.value.confirmReprocess = { show: false, video: '' };
+                    if (downloadWs && downloadWs.readyState === WebSocket.OPEN) {
+                        downloadWs.send(JSON.stringify({ type: 'confirm_reprocess', confirmed }));
+                    }
+                    addTranslateLog('info', confirmed ? '[系統] 使用者確認重新處理' : '[系統] 使用者取消，已跳過');
+                };
+
                 const deleteTranslateVideo = async (filename) => {
                     try {
                         const res = await fetch(`${API_BASE}/api/translate/videos/${encodeURIComponent(filename)}`, {
@@ -3677,6 +3710,12 @@
                             showToast(`失敗: ${data.video}`, 'error');
                             break;
                         }
+
+                        case 'translate_confirm_reprocess':
+                            addTranslateLog('info', `[系統] 「${data.video}」已處理過，等待確認...`);
+                            showToast(`「${data.video}」已處理過`, 'info', 5000);
+                            ts.value.confirmReprocess = { show: true, video: data.video };
+                            break;
 
                         case 'translate_rename_start':
                             addTranslateLog('info', `[標題] 正在生成標題...`);
@@ -4723,6 +4762,7 @@
                     handleFileSelect,
                     downloadFromUrl,
                     startUrlProcess,
+                    respondReprocess,
                     deleteTranslateVideo,
                     startRename,
                     renameTranslateVideo,

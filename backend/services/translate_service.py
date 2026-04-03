@@ -44,11 +44,20 @@ class TranslateService:
         # Thread lock
         self._lock = threading.Lock()
 
+        # Reprocess confirmation
+        self._confirm_event = threading.Event()
+        self._confirm_result = False
+
     def set_event_loop(self, loop: asyncio.AbstractEventLoop):
         self._loop = loop
 
     def set_ws_manager(self, manager):
         self._ws_manager = manager
+
+    def confirm_reprocess(self, confirmed: bool):
+        """Called from WebSocket handler when user responds to reprocess confirmation."""
+        self._confirm_result = confirmed
+        self._confirm_event.set()
 
     def _broadcast(self, message: dict):
         """Thread-safe broadcast to WebSocket clients."""
@@ -385,6 +394,28 @@ class TranslateService:
 
             old_video_name = downloaded_file.stem
             video_name = old_video_name  # Will be updated after rename
+
+            # Check if already processed — ask user before re-doing expensive work
+            existing_srt = self.subtitles_folder / f"{old_video_name}_zh.srt"
+            if existing_srt.exists():
+                self._confirm_event.clear()
+                self._confirm_result = False
+                self._broadcast({
+                    "type": "translate_confirm_reprocess",
+                    "data": {"video": old_video_name}
+                })
+                # Wait up to 60s for user response
+                answered = self._confirm_event.wait(timeout=60)
+                if not answered or not self._confirm_result:
+                    self._broadcast({
+                        "type": "translate_pipeline_done",
+                        "data": {
+                            "success_count": 0, "failed_count": 0,
+                            "error": "已跳過（使用者取消重新處理）" if answered else "已跳過（等待逾時）",
+                            "results": []
+                        }
+                    })
+                    return
 
             # Step 2: Transcribe only (get entries)
             self._broadcast({
