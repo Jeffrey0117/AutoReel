@@ -11,6 +11,12 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
+try:
+    from opencc import OpenCC
+    _s2tw = OpenCC('s2twp')
+except ImportError:
+    _s2tw = None
+
 # Add project root to path so we can import translate_video
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -409,16 +415,29 @@ class TranslateService:
             new_title = self._generate_title_from_text(transcript_text)
 
             if new_title and new_title != old_video_name:
-                # Rename video file
+                # Rename video file (retry up to 3 times if file is locked)
                 new_video_path = downloaded_file.parent / f"{new_title}{downloaded_file.suffix}"
                 if not new_video_path.exists():
-                    downloaded_file.rename(new_video_path)
-                    downloaded_file = new_video_path
-                    video_name = new_title
-                    self._broadcast({
-                        "type": "translate_renamed",
-                        "data": {"old_name": old_video_name, "new_name": new_title}
-                    })
+                    import time
+                    renamed = False
+                    for attempt in range(3):
+                        try:
+                            downloaded_file.rename(new_video_path)
+                            renamed = True
+                            break
+                        except OSError as e:
+                            if attempt < 2:
+                                print(f"[Pipeline] Rename blocked (attempt {attempt + 1}), retrying in 2s: {e}")
+                                time.sleep(2)
+                            else:
+                                print(f"[Pipeline] Rename failed after 3 attempts, keeping original name: {e}")
+                    if renamed:
+                        downloaded_file = new_video_path
+                        video_name = new_title
+                        self._broadcast({
+                            "type": "translate_renamed",
+                            "data": {"old_name": old_video_name, "new_name": new_title}
+                        })
 
             # Step 4: Save transcription with new name
             workflow.subtitle_gen.export_srt(
@@ -553,12 +572,22 @@ class TranslateService:
                     })
                 except (ValueError, IndexError):
                     pass
+            elif '[download]' in line and 'has already been downloaded' in line:
+                # yt-dlp: "[download] /path/to/file.mp4 has already been downloaded"
+                already_path = line.split('[download]')[1].split('has already')[0].strip()
+                if already_path:
+                    downloaded_path = Path(already_path)
+                    print(f"[Download] Already exists: {downloaded_path.name}")
+            elif '[download]' in line and 'Destination:' in line:
+                dest = line.split('Destination:')[-1].strip()
+                if dest:
+                    downloaded_path = Path(dest)
             elif '[Merger]' in line:
                 self._broadcast({
                     "type": "translate_download_progress",
                     "data": {"status": "processing", "url": url, "progress": 95}
                 })
-            # Capture final file path
+            # Capture final file path from --print after_move:filepath
             elif line.endswith('.mp4') and self.videos_folder.name in line:
                 downloaded_path = Path(line)
 
@@ -567,11 +596,8 @@ class TranslateService:
         if process.returncode == 0 and downloaded_path and downloaded_path.exists():
             return downloaded_path
 
-        # Fallback: find most recently modified mp4
-        mp4_files = list(self.videos_folder.glob("*.mp4"))
-        if mp4_files:
-            return max(mp4_files, key=lambda f: f.stat().st_mtime)
-
+        # No fallback — never guess which file to process
+        print(f"[Download] Failed to determine downloaded file for {url}")
         return None
 
     def _translate_single_video(self, video_path: str) -> Optional[str]:
@@ -718,8 +744,9 @@ class TranslateService:
             if not api_key:
                 return None
 
-            prompt = f"""根據以下影片字幕內容，生成一個簡短的中文標題（10-20字）。
+            prompt = f"""根據以下影片字幕內容，生成一個簡短的繁體中文標題（台灣用語，10-20字）。
 標題要能概括影片主題，吸引人點擊。
+必須使用繁體中文（台灣用語），絕對不可以用簡體中文。
 只輸出標題本身，不要加引號或其他說明。
 
 字幕內容：
@@ -749,6 +776,9 @@ class TranslateService:
                 invalid_chars = '<>:"/\\|?*'
                 for char in invalid_chars:
                     title = title.replace(char, '')
+                # Force Traditional Chinese (Taiwan)
+                if _s2tw:
+                    title = _s2tw.convert(title)
                 # Limit length
                 if len(title) > 50:
                     title = title[:50]
@@ -783,8 +813,9 @@ class TranslateService:
             if not api_key:
                 return None
 
-            prompt = f"""根據以下影片語音內容，生成一個簡短的中文標題（10-20字）。
+            prompt = f"""根據以下影片語音內容，生成一個簡短的繁體中文標題（台灣用語，10-20字）。
 標題要能概括影片主題，吸引人點擊。
+必須使用繁體中文（台灣用語），絕對不可以用簡體中文。
 只輸出標題本身，不要加引號或其他說明。
 
 語音內容：
@@ -814,6 +845,9 @@ class TranslateService:
                 invalid_chars = '<>:"/\\|?*'
                 for char in invalid_chars:
                     title = title.replace(char, '')
+                # Force Traditional Chinese (Taiwan)
+                if _s2tw:
+                    title = _s2tw.convert(title)
                 if len(title) > 50:
                     title = title[:50]
                 return title if title else None
@@ -884,7 +918,9 @@ class TranslateService:
     def _rename_video_and_subtitles(self, old_name: str, new_name: str) -> bool:
         """Rename video file and all related subtitle files."""
         try:
-            # Find and rename video file
+            import time
+
+            # Find and rename video file (retry if locked)
             video_extensions = ['.mp4', '.mkv', '.avi', '.mov']
             video_renamed = False
 
@@ -892,8 +928,17 @@ class TranslateService:
                 old_video = self.videos_folder / f"{old_name}{ext}"
                 if old_video.exists():
                     new_video = self.videos_folder / f"{new_name}{ext}"
-                    old_video.rename(new_video)
-                    video_renamed = True
+                    for attempt in range(3):
+                        try:
+                            old_video.rename(new_video)
+                            video_renamed = True
+                            break
+                        except OSError as e:
+                            if attempt < 2:
+                                print(f"[Rename] File locked (attempt {attempt + 1}), retrying in 2s: {e}")
+                                time.sleep(2)
+                            else:
+                                print(f"[Rename] Failed after 3 attempts: {e}")
                     break
 
             # Rename subtitle files
