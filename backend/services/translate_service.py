@@ -98,7 +98,7 @@ class TranslateService:
         video_extensions = {'.mp4', '.avi', '.mov', '.mkv'}
         videos = []
 
-        for f in sorted(self.videos_folder.iterdir()):
+        for f in sorted(self.videos_folder.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
             if f.suffix.lower() in video_extensions and f.is_file():
                 video_name = f.stem
                 # Check processing status
