@@ -76,3 +76,27 @@ def test_list_presets_sorted_by_id(service, preset_dir):
 
     result = service.list_presets()
     assert [p["id"] for p in result] == ["apple", "mango", "zebra"]
+
+
+# --- get_preset ---
+
+def test_get_preset_returns_full_content(service, preset_dir):
+    expected = write_preset(preset_dir, "default", "預設", "the look")
+    result = service.get_preset("default")
+    assert result == expected
+
+
+def test_get_preset_missing_raises(service):
+    from services.preset_service import PresetNotFoundError
+    with pytest.raises(PresetNotFoundError):
+        service.get_preset("does_not_exist")
+
+
+def test_get_preset_ignores_hidden_id(service, preset_dir):
+    # Create a real preset and a hidden state file
+    write_preset(preset_dir, "real", "Real")
+    (preset_dir / ".bag_state.json").write_text('{"foo":"bar"}', encoding="utf-8")
+
+    from services.preset_service import PresetNotFoundError
+    with pytest.raises(PresetNotFoundError):
+        service.get_preset(".bag_state")

@@ -52,3 +52,15 @@ class PresetService:
                 # Skip malformed files silently — should not break the listing
                 continue
         return summaries
+
+    def get_preset(self, id: str) -> dict:
+        """Return the full JSON content of one preset. Raises PresetNotFoundError if missing."""
+        if not id or id.startswith(".") or "/" in id or "\\" in id:
+            raise PresetNotFoundError(f"Invalid preset id: {id!r}")
+
+        path = self.presets_dir / f"{id}.json"
+        if not path.exists():
+            raise PresetNotFoundError(f"Preset not found: {id!r}")
+
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
