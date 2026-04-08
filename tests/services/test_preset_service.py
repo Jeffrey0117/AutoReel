@@ -231,3 +231,56 @@ def test_draw_title_color_handles_empty_color_list(service, preset_dir):
     color = service.draw_title_color("empty")
     assert isinstance(color, str)
     assert color.startswith("#")
+
+
+# --- ensure_default_preset (seed) ---
+
+def test_ensure_default_preset_seeds_from_config(service, preset_dir, config_path):
+    config_path.write_text(json.dumps({
+        "whisper": {"model": "base"},
+        "subtitle_style": {"font_size": 14, "text_color": "#ffe759"},
+        "title_style": {"font_size": 5.0, "random_bg_colors": ["#ff0000"]},
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    service.ensure_default_preset()
+
+    seeded_path = preset_dir / "default.json"
+    assert seeded_path.exists()
+
+    seeded = json.loads(seeded_path.read_text(encoding="utf-8"))
+    assert seeded["id"] == "default"
+    assert seeded["subtitle_style"]["text_color"] == "#ffe759"
+    assert seeded["title_style"]["random_bg_colors"] == ["#ff0000"]
+
+
+def test_ensure_default_preset_does_not_overwrite_existing(service, preset_dir, config_path):
+    config_path.write_text(json.dumps({
+        "subtitle_style": {"text_color": "#NEW"},
+        "title_style": {},
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    # Pre-existing default.json with custom content
+    existing = {
+        "id": "default",
+        "name": "我自訂的",
+        "description": "",
+        "subtitle_style": {"text_color": "#OLD"},
+        "title_style": {},
+    }
+    (preset_dir / "default.json").write_text(
+        json.dumps(existing, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    service.ensure_default_preset()
+
+    on_disk = json.loads((preset_dir / "default.json").read_text(encoding="utf-8"))
+    assert on_disk["subtitle_style"]["text_color"] == "#OLD"
+    assert on_disk["name"] == "我自訂的"
+
+
+def test_ensure_default_preset_no_config_no_op(service, preset_dir, config_path):
+    # config doesn't exist
+    assert not config_path.exists()
+    service.ensure_default_preset()
+    assert not (preset_dir / "default.json").exists()

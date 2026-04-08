@@ -178,3 +178,34 @@ class PresetService:
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
         tmp.replace(self.bag_state_path)
+
+    def ensure_default_preset(self) -> None:
+        """
+        Create style_presets/default.json from current translation_config.json
+        if it doesn't already exist. Never overwrites an existing default.json.
+        Silently no-ops if the source config doesn't exist.
+        """
+        default_path = self.presets_dir / "default.json"
+        if default_path.exists():
+            return
+        if not self.config_path.exists():
+            return
+
+        with open(self.config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+
+        seeded = {
+            "id": "default",
+            "name": "預設",
+            "description": "從目前的 translation_config.json 自動產生",
+            "subtitle_style": config.get("subtitle_style", {}),
+            "title_style": config.get("title_style", {}),
+        }
+
+        self.presets_dir.mkdir(parents=True, exist_ok=True)
+        with open(default_path, "w", encoding="utf-8") as f:
+            json.dump(seeded, f, ensure_ascii=False, indent=2)
+
+
+# Module singleton (default project paths)
+preset_service = PresetService()
