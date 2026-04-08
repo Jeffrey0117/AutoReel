@@ -1796,6 +1796,20 @@
                             <div class="subtitle-section">
                                 <h3 class="subtitle-section-title">{{ t('subtitle.styleSettings') }}</h3>
 
+                                <!-- Preset Selector -->
+                                <div class="subtitle-form-group">
+                                    <label class="subtitle-form-label">樣式預設集</label>
+                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                        <select v-model="selectedPresetId" style="flex: 1; padding: 6px 10px; border-radius: 4px;">
+                                            <option v-if="presetList.length === 0" value="">尚未建立預設集</option>
+                                            <option v-for="p in presetList" :key="p.id" :value="p.id">
+                                                {{ p.name }}
+                                            </option>
+                                        </select>
+                                        <button class="btn btn-secondary" @click="applyPreset" :disabled="!selectedPresetId">套用</button>
+                                    </div>
+                                </div>
+
                                 <div class="subtitle-form-group">
                                     <label class="subtitle-form-label">{{ t('subtitle.fontSize') }}</label>
                                     <div class="subtitle-slider-group">
@@ -3150,6 +3164,9 @@
                         line_max_width: 0.82
                     }
                 });
+                // 樣式預設集
+                const presetList = ref([]);
+                const selectedPresetId = ref(localStorage.getItem('autoreel.lastPresetId') || '');
                 const subtitleTemplateText = ref('');
                 const subtitleVideos = ref([]);
                 const subtitleStatus = ref('');
@@ -3944,6 +3961,48 @@
                     }
                 };
 
+                const loadPresets = async () => {
+                    try {
+                        const res = await fetch(`${FASTAPI_BASE}/api/translate/presets`);
+                        const data = await res.json();
+                        presetList.value = data.presets || [];
+                        if (selectedPresetId.value && !presetList.value.some(p => p.id === selectedPresetId.value)) {
+                            selectedPresetId.value = '';
+                        }
+                    } catch (e) {
+                        console.error('loadPresets failed:', e);
+                        presetList.value = [];
+                    }
+                };
+
+                const applyPreset = async () => {
+                    if (!selectedPresetId.value) return;
+                    try {
+                        const res = await fetch(
+                            `${FASTAPI_BASE}/api/translate/presets/${encodeURIComponent(selectedPresetId.value)}/apply`,
+                            { method: 'POST' }
+                        );
+                        const data = await res.json();
+                        if (data.success && data.config) {
+                            subtitleConfig.value = {
+                                ...subtitleConfig.value,
+                                ...data.config,
+                                subtitle_style: {
+                                    ...subtitleConfig.value.subtitle_style,
+                                    ...(data.config.subtitle_style || {})
+                                }
+                            };
+                            localStorage.setItem('autoreel.lastPresetId', selectedPresetId.value);
+                            showToast(`已套用樣式：${selectedPresetId.value}`, 'success');
+                        } else {
+                            showToast('套用失敗', 'error');
+                        }
+                    } catch (e) {
+                        console.error('applyPreset failed:', e);
+                        showToast(`套用失敗: ${e.message}`, 'error');
+                    }
+                };
+
                 const startSubtitleProcess = async () => {
                     if (subtitleIsRunning.value) return;
 
@@ -4640,6 +4699,10 @@
                             loadIgDrafts();
                             loadIgCaptions();
                         }
+                        if (currentView.value === 'subtitle') {
+                            loadSubtitleConfig();
+                            loadPresets();
+                        }
                         connectDownloadWs();
                     } else {
                         // 後端未啟動，顯示提示
@@ -4716,6 +4779,7 @@
                     // 當切換到字幕編輯器時載入配置
                     if (newView === 'subtitle') {
                         loadSubtitleConfig();
+                        loadPresets();
                     }
                     // 當切換到工作流時載入影片列表
                     if (newView === 'workflow') {
@@ -4834,6 +4898,11 @@
                     loadSubtitleConfig,
                     saveSubtitleConfig,
                     startSubtitleProcess,
+                    // 樣式預設集
+                    presetList,
+                    selectedPresetId,
+                    loadPresets,
+                    applyPreset,
                     // IG 文案產生器
                     ig,
                     loadIgExamples,
