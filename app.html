@@ -3277,6 +3277,7 @@
 
                 // ===== 下載功能 =====
                 const API_BASE = location.hostname === 'localhost' ? 'http://localhost:8000' : '';
+                const FASTAPI_BASE = location.hostname === 'localhost' ? 'http://localhost:8001' : '';
                 let downloadWs = null;
 
                 const showToast = (message, type = 'info', duration = 3000) => {
@@ -3891,23 +3892,25 @@
 
                 const loadSubtitleConfig = async () => {
                     try {
-                        const res = await fetch(`${API_BASE}/api/config`);
-                        const data = await res.json();
-                        if (data.config) {
+                        const res = await fetch(`${FASTAPI_BASE}/api/translate/config`);
+                        const rawConfig = await res.json();
+                        // FastAPI returns raw config dict (no wrapper); legacy server wraps as {config:...}
+                        const cfg = rawConfig.config || rawConfig;
+                        if (cfg && (cfg.subtitle_style || cfg.title_style)) {
                             subtitleConfig.value = {
                                 ...subtitleConfig.value,
-                                ...data.config,
+                                ...cfg,
                                 subtitle_style: {
                                     ...subtitleConfig.value.subtitle_style,
-                                    ...data.config.subtitle_style
+                                    ...(cfg.subtitle_style || {})
                                 }
                             };
                         }
-                        if (data.template_text !== undefined) {
-                            subtitleTemplateText.value = data.template_text;
+                        if (rawConfig.template_text !== undefined) {
+                            subtitleTemplateText.value = rawConfig.template_text;
                         }
-                        if (data.videos) {
-                            subtitleVideos.value = data.videos;
+                        if (rawConfig.videos) {
+                            subtitleVideos.value = rawConfig.videos;
                         }
                         subtitleStatus.value = t('subtitle.configLoaded');
                         subtitleStatusClass.value = 'success';
@@ -3919,12 +3922,11 @@
 
                 const saveSubtitleConfig = async () => {
                     try {
-                        const res = await fetch(`${API_BASE}/api/config`, {
-                            method: 'POST',
+                        const res = await fetch(`${FASTAPI_BASE}/api/translate/config`, {
+                            method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                config: subtitleConfig.value,
-                                template_text: subtitleTemplateText.value
+                                config: subtitleConfig.value
                             })
                         });
                         const data = await res.json();
