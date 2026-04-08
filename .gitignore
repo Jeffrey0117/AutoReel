@@ -37,3 +37,6 @@ Thumbs.db
 
 # Jianying draft output
 翻譯專案_*/
+
+# Style presets (user-specific, auto-seeded from translation_config.json on startup)
+style_presets/

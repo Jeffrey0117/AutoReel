@@ -42,6 +42,13 @@ async def lifespan(app: FastAPI):
     # 啟動時初始化資料庫
     init_db()
 
+    # Seed default style preset if missing
+    from services.preset_service import preset_service
+    try:
+        preset_service.ensure_default_preset()
+    except Exception as e:
+        print(f"[main] preset seed failed (non-fatal): {e}")
+
     loop = asyncio.get_running_loop()
 
     # 設定 translate_service 的 event loop 和 WebSocket manager

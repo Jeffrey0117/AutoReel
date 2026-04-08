@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from services.translate_service import translate_service
+from services.preset_service import preset_service, PresetNotFoundError
 
 router = APIRouter(prefix="/api/translate", tags=["translate"])
 
@@ -177,3 +178,30 @@ async def update_config(body: ConfigUpdate):
     """Update translation_config.json."""
     updated = translate_service.update_config(body.config)
     return {"success": True, "config": updated}
+
+
+# --- Style Presets ---
+
+@router.get("/presets")
+async def list_presets():
+    """List all subtitle/title style presets."""
+    return {"presets": preset_service.list_presets()}
+
+
+@router.get("/presets/{preset_id}")
+async def get_preset(preset_id: str):
+    """Get full content of one preset."""
+    try:
+        return preset_service.get_preset(preset_id)
+    except PresetNotFoundError:
+        raise HTTPException(404, f"Preset not found: {preset_id}")
+
+
+@router.post("/presets/{preset_id}/apply")
+async def apply_preset(preset_id: str):
+    """Apply preset → overwrite subtitle_style + title_style in translation_config.json."""
+    try:
+        new_config = preset_service.apply_preset(preset_id)
+        return {"success": True, "config": new_config}
+    except PresetNotFoundError:
+        raise HTTPException(404, f"Preset not found: {preset_id}")
