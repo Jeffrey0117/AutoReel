@@ -1,0 +1,78 @@
+"""Tests for PresetService."""
+import json
+import pytest
+from pathlib import Path
+
+from services.preset_service import PresetService
+
+
+@pytest.fixture
+def preset_dir(tmp_path):
+    """Provide a temp style_presets directory."""
+    d = tmp_path / "style_presets"
+    d.mkdir()
+    return d
+
+
+@pytest.fixture
+def config_path(tmp_path):
+    """Provide a temp translation_config.json path."""
+    return tmp_path / "translation_config.json"
+
+
+@pytest.fixture
+def service(preset_dir, config_path):
+    return PresetService(presets_dir=preset_dir, config_path=config_path)
+
+
+def write_preset(preset_dir: Path, id: str, name: str, description: str = ""):
+    """Helper to write a minimal preset file."""
+    data = {
+        "id": id,
+        "name": name,
+        "description": description,
+        "subtitle_style": {"font_size": 14, "text_color": "#ffffff"},
+        "title_style": {"font_size": 5.0, "random_bg_colors": ["#ff0000"]},
+    }
+    (preset_dir / f"{id}.json").write_text(
+        json.dumps(data, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return data
+
+
+# --- list_presets ---
+
+def test_list_presets_empty_dir(service):
+    assert service.list_presets() == []
+
+
+def test_list_presets_returns_summary_only(service, preset_dir):
+    write_preset(preset_dir, "default", "預設", "default look")
+    write_preset(preset_dir, "yellow", "黃色粗體", "")
+
+    result = service.list_presets()
+    assert len(result) == 2
+    ids = {p["id"] for p in result}
+    assert ids == {"default", "yellow"}
+    # Each entry must have exactly id/name/description, no style data
+    for p in result:
+        assert set(p.keys()) == {"id", "name", "description"}
+
+
+def test_list_presets_skips_hidden_files(service, preset_dir):
+    write_preset(preset_dir, "visible", "Visible")
+    # Hidden file (starts with .)
+    (preset_dir / ".bag_state.json").write_text("{}", encoding="utf-8")
+
+    result = service.list_presets()
+    assert [p["id"] for p in result] == ["visible"]
+
+
+def test_list_presets_sorted_by_id(service, preset_dir):
+    write_preset(preset_dir, "zebra", "Z")
+    write_preset(preset_dir, "apple", "A")
+    write_preset(preset_dir, "mango", "M")
+
+    result = service.list_presets()
+    assert [p["id"] for p in result] == ["apple", "mango", "zebra"]
