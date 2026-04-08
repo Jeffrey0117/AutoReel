@@ -7,6 +7,8 @@ translation_config.json. Hidden files (starting with `.`) are not exposed as pre
 """
 
 import json
+import random
+import threading
 from pathlib import Path
 from typing import Optional
 
@@ -16,6 +18,11 @@ class PresetNotFoundError(Exception):
 
 
 class PresetService:
+    # Class-level lock for bag state file (parallel pipeline safety)
+    _bag_lock = threading.Lock()
+
+    DEFAULT_FALLBACK_COLOR = "#000000"
+
     def __init__(
         self,
         presets_dir: Optional[Path] = None,
@@ -92,3 +99,82 @@ class PresetService:
         tmp_path.replace(self.config_path)
 
         return config
+
+    def draw_title_color(self, preset_id: str) -> str:
+        """
+        Draw the next title background color for the given preset using a shuffle-bag.
+        Guarantees no repeat within a cycle and no immediate repeat across cycle boundaries.
+        Falls back to DEFAULT_FALLBACK_COLOR if the preset has an empty color list.
+        """
+        with self._bag_lock:
+            # Read current source colors from preset
+            try:
+                preset = self.get_preset(preset_id)
+            except PresetNotFoundError:
+                return self.DEFAULT_FALLBACK_COLOR
+
+            source_colors = list(preset.get("title_style", {}).get("random_bg_colors", []))
+
+            if not source_colors:
+                return self.DEFAULT_FALLBACK_COLOR
+
+            if len(source_colors) == 1:
+                return source_colors[0]
+
+            # Load bag state
+            state = self._load_bag_state()
+            preset_state = state.get(preset_id)
+
+            needs_reshuffle = (
+                preset_state is None
+                or preset_state.get("source_colors") != source_colors
+                or preset_state.get("cursor", 0) >= len(preset_state.get("shuffled", []))
+            )
+
+            if needs_reshuffle:
+                previous_last = None
+                if (
+                    preset_state is not None
+                    and preset_state.get("source_colors") == source_colors
+                    and preset_state.get("shuffled")
+                ):
+                    previous_last = preset_state["shuffled"][-1]
+
+                shuffled = source_colors.copy()
+                random.shuffle(shuffled)
+
+                # Avoid placing previous_last as the first of the new cycle
+                if previous_last is not None and shuffled[0] == previous_last:
+                    swap_idx = random.randint(1, len(shuffled) - 1)
+                    shuffled[0], shuffled[swap_idx] = shuffled[swap_idx], shuffled[0]
+
+                preset_state = {
+                    "source_colors": source_colors,
+                    "shuffled": shuffled,
+                    "cursor": 0,
+                }
+
+            # Draw and advance cursor
+            color = preset_state["shuffled"][preset_state["cursor"]]
+            preset_state["cursor"] += 1
+
+            state[preset_id] = preset_state
+            self._save_bag_state(state)
+
+            return color
+
+    def _load_bag_state(self) -> dict:
+        if not self.bag_state_path.exists():
+            return {}
+        try:
+            with open(self.bag_state_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return {}
+
+    def _save_bag_state(self, state: dict) -> None:
+        self.presets_dir.mkdir(parents=True, exist_ok=True)
+        tmp = self.bag_state_path.with_suffix(".json.tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
+        tmp.replace(self.bag_state_path)

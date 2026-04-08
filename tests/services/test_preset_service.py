@@ -144,3 +144,90 @@ def test_apply_preset_missing_raises(service):
     from services.preset_service import PresetNotFoundError
     with pytest.raises(PresetNotFoundError):
         service.apply_preset("nope")
+
+
+# --- draw_title_color (shuffle bag) ---
+
+def write_preset_with_colors(preset_dir: Path, id: str, colors: list[str]):
+    data = {
+        "id": id,
+        "name": id,
+        "description": "",
+        "subtitle_style": {},
+        "title_style": {"random_bg_colors": colors},
+    }
+    (preset_dir / f"{id}.json").write_text(
+        json.dumps(data, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def test_draw_title_color_single_color(service, preset_dir):
+    write_preset_with_colors(preset_dir, "mono", ["#abcdef"])
+    for _ in range(5):
+        assert service.draw_title_color("mono") == "#abcdef"
+
+
+def test_draw_title_color_no_repeats_within_cycle(service, preset_dir):
+    colors = ["#aa0000", "#00aa00", "#0000aa", "#aaaa00", "#aa00aa"]
+    write_preset_with_colors(preset_dir, "rainbow", colors)
+
+    drawn = [service.draw_title_color("rainbow") for _ in range(len(colors))]
+    assert sorted(drawn) == sorted(colors), "every color should appear exactly once per cycle"
+
+
+def test_draw_title_color_no_repeat_across_cycle_boundary(service, preset_dir):
+    colors = ["#aa0000", "#00aa00", "#0000aa", "#aaaa00", "#aa00aa"]
+    write_preset_with_colors(preset_dir, "rainbow", colors)
+
+    # Draw 100 cycles' worth and check no two consecutive draws are equal
+    sequence = [service.draw_title_color("rainbow") for _ in range(len(colors) * 100)]
+    for i in range(1, len(sequence)):
+        assert sequence[i] != sequence[i - 1], (
+            f"consecutive repeat at index {i}: {sequence[i-1]} -> {sequence[i]}"
+        )
+
+
+def test_draw_title_color_resets_when_color_list_changes(service, preset_dir):
+    write_preset_with_colors(preset_dir, "rainbow", ["#aa0000", "#00aa00"])
+    service.draw_title_color("rainbow")
+    service.draw_title_color("rainbow")  # bag exhausted
+
+    # Edit preset: replace colors entirely
+    write_preset_with_colors(preset_dir, "rainbow", ["#ffffff", "#000000", "#888888"])
+
+    # Should detect change and reshuffle from new source
+    drawn = [service.draw_title_color("rainbow") for _ in range(3)]
+    assert sorted(drawn) == ["#000000", "#888888", "#ffffff"]
+
+
+def test_draw_title_color_state_persists_to_disk(service, preset_dir):
+    colors = ["#a", "#b", "#c"]
+    write_preset_with_colors(preset_dir, "p", colors)
+
+    service.draw_title_color("p")
+    service.draw_title_color("p")
+
+    # Bag state file should exist and record cursor=2
+    state = json.loads((preset_dir / ".bag_state.json").read_text(encoding="utf-8"))
+    assert state["p"]["cursor"] == 2
+    assert sorted(state["p"]["source_colors"]) == sorted(colors)
+
+
+def test_draw_title_color_isolated_per_preset(service, preset_dir):
+    write_preset_with_colors(preset_dir, "a", ["#a1", "#a2"])
+    write_preset_with_colors(preset_dir, "b", ["#b1", "#b2"])
+
+    # Drawing from "a" should not affect "b"'s state
+    service.draw_title_color("a")
+    service.draw_title_color("a")  # exhaust a
+    drawn_b = [service.draw_title_color("b") for _ in range(2)]
+    assert sorted(drawn_b) == ["#b1", "#b2"]
+
+
+def test_draw_title_color_handles_empty_color_list(service, preset_dir):
+    write_preset_with_colors(preset_dir, "empty", [])
+    # Should not raise; falls back to a sentinel default
+    color = service.draw_title_color("empty")
+    assert isinstance(color, str)
+    assert color.startswith("#")
