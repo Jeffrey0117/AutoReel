@@ -72,6 +72,39 @@ class PresetService:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
 
+    def save_preset(
+        self,
+        id: str,
+        subtitle_style: Optional[dict] = None,
+        title_style: Optional[dict] = None,
+    ) -> dict:
+        """
+        Merge subtitle_style and/or title_style into an existing preset and write back.
+        Preserves id/name/description and any keys not present in the payload
+        (e.g. fonts, text_color_options, random_bg_colors).
+        Raises PresetNotFoundError if preset doesn't exist.
+        """
+        preset = self.get_preset(id)  # validates id + raises if missing
+
+        if subtitle_style:
+            preset["subtitle_style"] = {
+                **preset.get("subtitle_style", {}),
+                **subtitle_style,
+            }
+
+        if title_style:
+            preset["title_style"] = {
+                **preset.get("title_style", {}),
+                **title_style,
+            }
+
+        path = self.presets_dir / f"{id}.json"
+        tmp_path = path.with_suffix(".json.tmp")
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(preset, f, ensure_ascii=False, indent=2)
+        tmp_path.replace(path)
+        return preset
+
     def apply_preset(self, id: str) -> dict:
         """
         Read preset and overwrite subtitle_style + title_style + active_preset_id

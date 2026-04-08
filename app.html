@@ -1808,6 +1808,7 @@
                                             </option>
                                         </select>
                                         <button class="btn btn-secondary" @click="applyPreset" :disabled="!selectedPresetId">套用</button>
+                                        <button class="btn btn-primary" @click="savePresetFromCurrent" :disabled="!selectedPresetId" title="把目前面板上的樣式數值寫回 style_presets/<id>.json">存回</button>
                                     </div>
                                 </div>
 
@@ -4004,6 +4005,33 @@
                     }
                 };
 
+                const savePresetFromCurrent = async () => {
+                    if (!selectedPresetId.value) return;
+                    try {
+                        const res = await fetch(
+                            `${FASTAPI_BASE}/api/translate/presets/${encodeURIComponent(selectedPresetId.value)}`,
+                            {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    subtitle_style: subtitleConfig.value.subtitle_style || {},
+                                    title_style: subtitleConfig.value.title_style || null,
+                                })
+                            }
+                        );
+                        const data = await res.json();
+                        if (data.success) {
+                            showToast(`已存回預設集：${selectedPresetId.value}`, 'success');
+                            await loadPresets();
+                        } else {
+                            showToast('存回失敗', 'error');
+                        }
+                    } catch (e) {
+                        console.error('savePresetFromCurrent failed:', e);
+                        showToast(`存回失敗: ${e.message}`, 'error');
+                    }
+                };
+
                 const startSubtitleProcess = async () => {
                     if (subtitleIsRunning.value) return;
 
@@ -4904,6 +4932,7 @@
                     selectedPresetId,
                     loadPresets,
                     applyPreset,
+                    savePresetFromCurrent,
                     // IG 文案產生器
                     ig,
                     loadIgExamples,

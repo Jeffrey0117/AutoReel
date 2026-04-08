@@ -36,6 +36,11 @@ class ConfigUpdate(BaseModel):
     config: dict
 
 
+class PresetSaveRequest(BaseModel):
+    subtitle_style: Optional[dict] = None
+    title_style: Optional[dict] = None
+
+
 # --- Video Management ---
 
 @router.post("/upload")
@@ -203,5 +208,19 @@ async def apply_preset(preset_id: str):
     try:
         new_config = preset_service.apply_preset(preset_id)
         return {"success": True, "config": new_config}
+    except PresetNotFoundError:
+        raise HTTPException(404, f"Preset not found: {preset_id}")
+
+
+@router.post("/presets/{preset_id}")
+async def save_preset(preset_id: str, body: PresetSaveRequest):
+    """Merge given subtitle_style/title_style into the preset file on disk."""
+    try:
+        updated = preset_service.save_preset(
+            preset_id,
+            subtitle_style=body.subtitle_style,
+            title_style=body.title_style,
+        )
+        return {"success": True, "preset": updated}
     except PresetNotFoundError:
         raise HTTPException(404, f"Preset not found: {preset_id}")

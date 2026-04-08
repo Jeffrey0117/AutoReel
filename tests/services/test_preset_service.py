@@ -146,6 +146,101 @@ def test_apply_preset_missing_raises(service):
         service.apply_preset("nope")
 
 
+# --- save_preset ---
+
+def test_save_preset_merges_subtitle_style(service, preset_dir):
+    # Existing preset has extra keys we must preserve
+    full = {
+        "id": "mine",
+        "name": "My Preset",
+        "description": "desc",
+        "subtitle_style": {
+            "font_size": 14,
+            "text_color": "#ffffff",
+            "fonts": [{"id": "f1"}],
+            "text_color_options": ["#aaa", "#bbb"],
+        },
+        "title_style": {"font_size": 5.0, "random_bg_colors": ["#111"]},
+    }
+    (preset_dir / "mine.json").write_text(
+        json.dumps(full, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    result = service.save_preset(
+        "mine",
+        subtitle_style={"font_size": 20, "text_color": "#123456"},
+    )
+
+    # Modified fields updated
+    assert result["subtitle_style"]["font_size"] == 20
+    assert result["subtitle_style"]["text_color"] == "#123456"
+    # Unmodified sub-keys preserved
+    assert result["subtitle_style"]["fonts"] == [{"id": "f1"}]
+    assert result["subtitle_style"]["text_color_options"] == ["#aaa", "#bbb"]
+    # id/name/description preserved
+    assert result["id"] == "mine"
+    assert result["name"] == "My Preset"
+    assert result["description"] == "desc"
+    # title_style untouched (no payload)
+    assert result["title_style"] == {"font_size": 5.0, "random_bg_colors": ["#111"]}
+
+    # Disk file matches
+    on_disk = json.loads((preset_dir / "mine.json").read_text(encoding="utf-8"))
+    assert on_disk == result
+
+
+def test_save_preset_merges_title_style(service, preset_dir):
+    write_preset(preset_dir, "mine", "My Preset")
+
+    result = service.save_preset(
+        "mine",
+        title_style={"font_size": 7.5, "position_y": 0.9},
+    )
+
+    assert result["title_style"]["font_size"] == 7.5
+    assert result["title_style"]["position_y"] == 0.9
+    # random_bg_colors (not in payload) preserved
+    assert result["title_style"]["random_bg_colors"] == ["#ff0000"]
+    # subtitle_style untouched
+    assert result["subtitle_style"] == {"font_size": 14, "text_color": "#ffffff"}
+
+
+def test_save_preset_merges_both_sections(service, preset_dir):
+    write_preset(preset_dir, "mine", "My Preset")
+
+    result = service.save_preset(
+        "mine",
+        subtitle_style={"font_size": 18},
+        title_style={"font_size": 6.0},
+    )
+
+    assert result["subtitle_style"]["font_size"] == 18
+    assert result["subtitle_style"]["text_color"] == "#ffffff"  # preserved
+    assert result["title_style"]["font_size"] == 6.0
+    assert result["title_style"]["random_bg_colors"] == ["#ff0000"]  # preserved
+
+
+def test_save_preset_no_payload_is_noop(service, preset_dir):
+    original = write_preset(preset_dir, "mine", "My Preset")
+    result = service.save_preset("mine")
+    assert result == original
+
+
+def test_save_preset_missing_raises(service):
+    from services.preset_service import PresetNotFoundError
+    with pytest.raises(PresetNotFoundError):
+        service.save_preset("nope", subtitle_style={"font_size": 10})
+
+
+def test_save_preset_rejects_path_traversal(service, preset_dir):
+    write_preset(preset_dir, "mine", "My Preset")
+    from services.preset_service import PresetNotFoundError
+    with pytest.raises(PresetNotFoundError):
+        service.save_preset("../../../etc/hosts", subtitle_style={})
+    with pytest.raises(PresetNotFoundError):
+        service.save_preset(".hidden", subtitle_style={})
+
+
 # --- draw_title_color (shuffle bag) ---
 
 def write_preset_with_colors(preset_dir: Path, id: str, colors: list[str]):
