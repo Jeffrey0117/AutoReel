@@ -100,3 +100,47 @@ def test_get_preset_ignores_hidden_id(service, preset_dir):
     from services.preset_service import PresetNotFoundError
     with pytest.raises(PresetNotFoundError):
         service.get_preset(".bag_state")
+
+
+# --- apply_preset ---
+
+def test_apply_preset_overwrites_style_sections(service, preset_dir, config_path):
+    # Existing config with old style values + unrelated sections
+    config_path.write_text(json.dumps({
+        "whisper": {"model": "base"},
+        "subtitle_style": {"font_size": 99, "text_color": "#000000"},
+        "title_style": {"font_size": 99, "random_bg_colors": ["#000000"]},
+        "active_preset_id": "old",
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    write_preset(preset_dir, "yellow", "黃色")
+
+    result = service.apply_preset("yellow")
+
+    # Returned config has new style sections
+    assert result["subtitle_style"]["text_color"] == "#ffffff"
+    assert result["subtitle_style"]["font_size"] == 14
+    assert result["title_style"]["random_bg_colors"] == ["#ff0000"]
+    # Active preset id updated
+    assert result["active_preset_id"] == "yellow"
+    # Unrelated sections untouched
+    assert result["whisper"] == {"model": "base"}
+
+    # File on disk reflects same content
+    on_disk = json.loads(config_path.read_text(encoding="utf-8"))
+    assert on_disk == result
+
+
+def test_apply_preset_creates_config_when_missing(service, preset_dir, config_path):
+    write_preset(preset_dir, "yellow", "黃色")
+    assert not config_path.exists()
+
+    result = service.apply_preset("yellow")
+    assert config_path.exists()
+    assert result["active_preset_id"] == "yellow"
+
+
+def test_apply_preset_missing_raises(service):
+    from services.preset_service import PresetNotFoundError
+    with pytest.raises(PresetNotFoundError):
+        service.apply_preset("nope")

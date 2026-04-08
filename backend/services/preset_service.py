@@ -64,3 +64,31 @@ class PresetService:
 
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
+
+    def apply_preset(self, id: str) -> dict:
+        """
+        Read preset and overwrite subtitle_style + title_style + active_preset_id
+        in translation_config.json. Returns the new full config.
+        Raises PresetNotFoundError if preset doesn't exist.
+        """
+        preset = self.get_preset(id)  # raises PresetNotFoundError if missing
+
+        # Load existing config (or start fresh)
+        if self.config_path.exists():
+            with open(self.config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+        else:
+            config = {}
+
+        # Overwrite style sections wholesale
+        config["subtitle_style"] = preset.get("subtitle_style", {})
+        config["title_style"] = preset.get("title_style", {})
+        config["active_preset_id"] = id
+
+        # Atomic-ish write: write to temp then rename
+        tmp_path = self.config_path.with_suffix(".json.tmp")
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, ensure_ascii=False, indent=2)
+        tmp_path.replace(self.config_path)
+
+        return config
