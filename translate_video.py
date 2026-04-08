@@ -33,6 +33,17 @@ import glob
 import uuid
 import copy
 import random
+
+# Preset service for shuffle-bag title color rotation
+import sys as _sys
+from pathlib import Path as _Path
+_backend_path = _Path(__file__).parent / "backend"
+if str(_backend_path) not in _sys.path:
+    _sys.path.insert(0, str(_backend_path))
+try:
+    from services.preset_service import preset_service as _preset_service
+except ImportError:
+    _preset_service = None
 import time
 import threading
 from queue import Queue, Empty
@@ -1130,8 +1141,12 @@ class TranslationWorkflow:
         # 日誌：顯示可選顏色列表
         print(f"   [Color] 可選顏色列表: {bg_colors}")
 
-        # 隨機選擇背景顏色
-        bg_color = random.choice(bg_colors)
+        # 使用 shuffle bag 從預設集挑選顏色（避免短期重複）
+        active_preset_id = self.config.get("active_preset_id", "default")
+        if _preset_service is not None:
+            bg_color = _preset_service.draw_title_color(active_preset_id)
+        else:
+            bg_color = random.choice(bg_colors)
 
         # 日誌：顯示選中的顏色
         print(f"   [Color] 隨機選中顏色: {bg_color}")
@@ -1356,8 +1371,12 @@ class TranslationWorkflow:
                 # 日誌：顯示可選顏色列表
                 print(f"   [Color] 可選顏色列表: {bg_colors}")
 
-                # 隨機選擇背景顏色
-                bg_color = random.choice(bg_colors)
+                # 使用 shuffle bag 從預設集挑選顏色（避免短期重複）
+                active_preset_id = self.config.get("active_preset_id", "default")
+                if _preset_service is not None:
+                    bg_color = _preset_service.draw_title_color(active_preset_id)
+                else:
+                    bg_color = random.choice(bg_colors)
 
                 # 日誌：顯示選中的顏色
                 print(f"   [Color] 隨機選中顏色: {bg_color}")
