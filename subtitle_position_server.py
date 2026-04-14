@@ -197,7 +197,7 @@ class PositionEditorHandler(SimpleHTTPRequestHandler):
             with open(draft_path, 'r', encoding='utf-8') as f:
                 draft_data = json.load(f)
 
-            # 收集字幕軌道的素材 ID（根據內容識別，跳過標題和 @html_cat）
+            # 收集字幕軌道的素材 ID（根據內容識別，跳過標題和 @aka_joke2342）
             texts = draft_data.get("materials", {}).get("texts", [])
             subtitle_material_ids = set()
             skipped_count = 0
@@ -211,14 +211,14 @@ class PositionEditorHandler(SimpleHTTPRequestHandler):
                 except:
                     text_content = ""
 
-                # 跳過 @html_cat（根據內容識別）
-                if "@html_cat" in text_content:
+                # 跳過 @aka_joke2342（根據內容識別）
+                if "@aka_joke2342" in text_content:
                     skipped_count += 1
-                    print(f"   [Skip] 跳過 @html_cat (index={i})")
+                    print(f"   [Skip] 跳過 @aka_joke2342 (index={i})")
                     continue
 
-                # 跳過標題（假設是前 2 個中的非 @html_cat）
-                if i < 2 and "@html_cat" not in text_content:
+                # 跳過標題（假設是前 2 個中的非 @aka_joke2342）
+                if i < 2 and "@aka_joke2342" not in text_content:
                     skipped_count += 1
                     print(f"   [Skip] 跳過標題 (index={i}): {text_content[:20]}...")
                     continue
@@ -307,7 +307,7 @@ class PositionEditorHandler(SimpleHTTPRequestHandler):
             with open(draft_path, 'r', encoding='utf-8') as f:
                 draft_data = json.load(f)
 
-            # 提取字幕文字（跳過標題和 @html_cat）
+            # 提取字幕文字（跳過標題和 @aka_joke2342）
             texts = draft_data.get("materials", {}).get("texts", [])
             subtitles = []
 
@@ -320,12 +320,12 @@ class PositionEditorHandler(SimpleHTTPRequestHandler):
                 except:
                     text_content = ""
 
-                # 跳過 @html_cat
-                if "@html_cat" in text_content:
+                # 跳過 @aka_joke2342
+                if "@aka_joke2342" in text_content:
                     continue
 
-                # 跳過標題（假設是前 2 個中的非 @html_cat）
-                if i < 2 and "@html_cat" not in text_content:
+                # 跳過標題（假設是前 2 個中的非 @aka_joke2342）
+                if i < 2 and "@aka_joke2342" not in text_content:
                     continue
 
                 # 這是翻譯字幕
@@ -378,12 +378,12 @@ class PositionEditorHandler(SimpleHTTPRequestHandler):
                 except:
                     continue
 
-                # 跳過 @html_cat
-                if "@html_cat" in text_content:
+                # 跳過 @aka_joke2342
+                if "@aka_joke2342" in text_content:
                     continue
 
-                # 跳過標題（假設是前 2 個中的非 @html_cat）
-                if i < 2 and "@html_cat" not in text_content:
+                # 跳過標題（假設是前 2 個中的非 @aka_joke2342）
+                if i < 2 and "@aka_joke2342" not in text_content:
                     continue
 
                 # 檢查是否包含要尋找的文字
@@ -529,7 +529,7 @@ class PositionEditorHandler(SimpleHTTPRequestHandler):
                     text_content = content_data.get("text", "")
                 except:
                     continue
-                if "@html_cat" in text_content:
+                if "@aka_joke2342" in text_content:
                     continue
                 if i < 2:
                     continue

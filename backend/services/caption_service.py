@@ -191,7 +191,7 @@ class CaptionService:
                 text_content = content_data.get("text", "")
             except (json.JSONDecodeError, ValueError):
                 continue
-            if "@html_cat" in text_content:
+            if "@aka_joke2342" in text_content:
                 continue
             if i < 2:
                 continue

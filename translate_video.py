@@ -828,7 +828,7 @@ class TranslationWorkflow:
         shadow_alpha = template_style.get("shadow_alpha", 0.618)
         shadow_distance = template_style.get("shadow_distance", 5.0)
         shadow_smoothing = template_style.get("shadow_smoothing", 0.45)
-        line_max_width = template_style.get("line_max_width", 0.82)
+        line_max_width = template_style.get("line_max_width", 0.88)
         fonts = template_style.get("fonts", [])
         # 背景設定
         background_alpha = template_style.get("background_alpha", 0.64)
@@ -1212,7 +1212,7 @@ class TranslationWorkflow:
             "layer_weight": 1,
             "letter_spacing": 0.0,
             "line_feed": 1,
-            "line_max_width": 0.82,
+            "line_max_width": 0.88,
             "line_spacing": 0.02,
             "force_apply_line_max_width": True,
             "multi_language_current": "none",
@@ -1330,7 +1330,7 @@ class TranslationWorkflow:
         return draft_data
 
     def _clean_template_texts(self, draft_data: dict, keep_count: int = 2) -> dict:
-        """清理模板中的字幕文字，但保留前 N 個模板文字（標題、@html_cat 等）"""
+        """清理模板中的字幕文字，但保留前 N 個模板文字（標題、@aka_joke2342 等）"""
         texts = draft_data.get("materials", {}).get("texts", [])
 
         if len(texts) > keep_count:
@@ -1582,7 +1582,7 @@ class TranslationWorkflow:
         # 深度複製模板
         draft_data = copy.deepcopy(template_data)
 
-        # 清理模板中的英文字幕，保留前 2 個模板文字（標題、@html_cat）
+        # 清理模板中的英文字幕，保留前 2 個模板文字（標題、@aka_joke2342）
         draft_data = self._clean_template_texts(draft_data, keep_count=2)
 
         # 替換影片
