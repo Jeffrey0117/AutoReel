@@ -2,12 +2,16 @@
   "apps": [
     {
       "name": "autoreel",
-      "script": "server.js",
+      "script": "C:\\Users\\jeffb\\Desktop\\code\\workhub\\autoreel\\server.js",
       "cwd": "C:\\Users\\jeffb\\Desktop\\code\\workhub\\autoreel",
       "env": {
         "NODE_ENV": "production",
         "PORT": "8001",
-        "TELEGRAM_PROXY": "https://tg-proxy.jeffby8.workers.dev"
+        "DEEPSEEK_API_KEY": "sk-aed329d9e8334309957c96eedb48375e",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONUTF8": "1",
+        "TELEGRAM_PROXY": "https://tg-proxy.jeffby8.workers.dev",
+        "GEMINI_API_KEY": "AIzaSyC-s5vuNOmiawyWFDt4xft9nE8q32xjToI"
       },
       "autorestart": true,
       "max_restarts": 5

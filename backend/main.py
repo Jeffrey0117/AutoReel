@@ -7,7 +7,8 @@ from pathlib import Path
 import asyncio
 import os
 
-# Load .env from project root
+# Load .env from project root — project values WIN over system env
+# (system User-scope vars otherwise mask updated keys we wrote here)
 _env_file = Path(__file__).parent.parent / ".env"
 if _env_file.exists():
     with open(_env_file, encoding="utf-8") as _f:
@@ -15,7 +16,7 @@ if _env_file.exists():
             _line = _line.strip()
             if _line and not _line.startswith("#") and "=" in _line:
                 _key, _, _val = _line.partition("=")
-                os.environ.setdefault(_key.strip(), _val.strip())
+                os.environ[_key.strip()] = _val.strip()
 
 from models import init_db
 from api.routes import router
@@ -25,11 +26,13 @@ from api.translate_routes import router as translate_router
 from api.caption_routes import router as caption_router
 from api.publish_routes import router as publish_router
 from api.draft_routes import router as draft_router
+from api.ig_helper_routes import router as ig_helper_router
 from api.websocket import manager
 from services.downloader import download_service
 from services.translate_service import translate_service
 from services.caption_service import caption_service
 from services.ig_publisher import ig_publisher
+from services.ig_helper import ig_helper
 from services.telegram_bot import telegram_bot_service
 from services.telegram_notifications import TelegramNotifier
 
@@ -59,9 +62,14 @@ async def lifespan(app: FastAPI):
     caption_service.set_event_loop(loop)
     caption_service.set_ws_manager(manager)
 
+    # 設定 ig_helper 的 event loop 和 WebSocket manager (必須在 ig_publisher 之前)
+    ig_helper.set_event_loop(loop)
+    ig_helper.set_ws_manager(manager)
+
     # 設定 ig_publisher 的 event loop 和 WebSocket manager
     ig_publisher.set_event_loop(loop)
     ig_publisher.set_ws_manager(manager)
+    ig_publisher.start()
 
     # Telegram Bot
     print(f"[main] TELEGRAM_BOT_TOKEN={'SET' if os.environ.get('TELEGRAM_BOT_TOKEN') else 'NOT SET'}")
@@ -80,7 +88,8 @@ async def lifespan(app: FastAPI):
     await telegram_bot_service.stop()
     if download_service.driver:
         download_service.driver.quit()
-    # 關閉 IG 發文瀏覽器
+    # 關閉 IG 排程引擎
+    ig_publisher.shutdown()
     await ig_publisher.close()
 
 
@@ -114,6 +123,7 @@ app.include_router(translate_router)  # 翻譯 API 路由
 app.include_router(caption_router)   # IG 文案 API 路由
 app.include_router(publish_router)   # IG 發文 API 路由
 app.include_router(draft_router)    # 剪映草稿操作 API 路由
+app.include_router(ig_helper_router) # IG Helper (Tampermonkey bridge)
 
 # MCP Server — 自動把所有 FastAPI routes 變 MCP tools
 try:

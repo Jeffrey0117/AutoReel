@@ -1952,71 +1952,120 @@
                     </div>
                 </div>
 
-                <!-- Overview Dashboard -->
-                <div v-if="currentView === 'overview'" class="workflow-section">
+                <!-- IG 排程發文 -->
+                <div v-if="currentView === 'schedule'" class="workflow-section">
                     <div class="workflow-header">
                         <div>
-                            <h2 class="workflow-title">工作流總覽</h2>
-                            <p class="workflow-subtitle">追蹤所有影片的處理進度</p>
+                            <h2 class="workflow-title">IG 排程發文</h2>
+                            <p class="workflow-subtitle">選擇影片、設定時間，自動發布到 Instagram</p>
                         </div>
-                        <button class="btn btn-secondary" @click="refreshOverview">
+                        <button class="btn btn-secondary" @click="loadScheduleVideos(); loadSchedules();">
                             <i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> 刷新
                         </button>
                     </div>
 
-                    <!-- 統計卡片 -->
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
-                        <div class="card" style="text-align: center; padding: 20px;">
-                            <div style="font-size: 2rem; font-weight: 700; color: var(--text-primary);">{{ overviewStats.total }}</div>
-                            <div style="font-size: 0.875rem; color: var(--text-muted);">總影片數</div>
-                        </div>
-                        <div class="card" style="text-align: center; padding: 20px;">
-                            <div style="font-size: 2rem; font-weight: 700; color: #22c55e;">{{ overviewStats.translated }}</div>
-                            <div style="font-size: 0.875rem; color: var(--text-muted);">已翻譯</div>
-                        </div>
-                        <div class="card" style="text-align: center; padding: 20px;">
-                            <div style="font-size: 2rem; font-weight: 700; color: #3b82f6;">{{ overviewStats.captioned }}</div>
-                            <div style="font-size: 0.875rem; color: var(--text-muted);">已生成文案</div>
-                        </div>
-                        <div class="card" style="text-align: center; padding: 20px;">
-                            <div style="font-size: 2rem; font-weight: 700; color: #a855f7;">{{ overviewStats.published }}</div>
-                            <div style="font-size: 0.875rem; color: var(--text-muted);">已發布</div>
+                    <!-- 排程列表 -->
+                    <div v-if="schedule.schedules.length > 0" style="margin-bottom: 24px;">
+                        <h3 style="font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">排程列表</h3>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <div v-for="s in schedule.schedules" :key="s.id" class="card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+                                <!-- Status badge -->
+                                <span style="flex-shrink: 0; padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600;"
+                                    :style="{
+                                        background: s.status === 'pending' ? 'var(--bg-card-hover)' : s.status === 'posting' ? '#dbeafe' : s.status === 'done' ? '#dcfce7' : '#fee2e2',
+                                        color: s.status === 'pending' ? 'var(--text-muted)' : s.status === 'posting' ? '#2563eb' : s.status === 'done' ? '#16a34a' : '#dc2626'
+                                    }">
+                                    <span v-if="s.status === 'posting'" style="display: inline-block; animation: pulse 1.5s ease-in-out infinite;">&#9679; </span>
+                                    {{ s.status === 'pending' ? '等待中' : s.status === 'posting' ? '發文中...' : s.status === 'done' ? '已完成' : '失敗' }}
+                                </span>
+                                <!-- Info -->
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-size: 0.875rem; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ s.filename }}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                                        {{ new Date(s.scheduled_at).toLocaleString('zh-TW') }}
+                                        <span v-if="s.caption" style="margin-left: 8px;">— {{ s.caption.substring(0, 40) }}{{ s.caption.length > 40 ? '...' : '' }}</span>
+                                    </div>
+                                    <div v-if="s.status === 'failed' && s.error" style="font-size: 0.75rem; color: #dc2626; margin-top: 4px;">{{ s.error }}</div>
+                                </div>
+                                <!-- Action buttons -->
+                                <button v-if="s.status === 'pending'" class="btn btn-secondary" style="flex-shrink: 0; padding: 6px 12px; font-size: 0.75rem;" @click="cancelSchedule(s.id)">
+                                    <i data-lucide="x" style="width:14px;height:14px;"></i> 取消
+                                </button>
+                                <div v-if="s.status === 'failed'" style="display: flex; gap: 6px; flex-shrink: 0;">
+                                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.75rem;" @click="retrySchedule(s)">
+                                        <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> 重試
+                                    </button>
+                                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" @click="dismissSchedule(s.id)">
+                                        <i data-lucide="x" style="width:14px;height:14px;"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- 影片列表表格 -->
-                    <div class="card">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="border-bottom: 1px solid var(--border-default);">
-                                    <th style="text-align: left; padding: 12px 16px; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">影片名稱</th>
-                                    <th style="text-align: center; padding: 12px 16px; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">翻譯</th>
-                                    <th style="text-align: center; padding: 12px 16px; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">文案</th>
-                                    <th style="text-align: center; padding: 12px 16px; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">發布</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="item in overviewList" :key="item.name"
-                                    style="border-bottom: 1px solid var(--border-default);"
-                                    :style="item.published ? 'background: rgba(34, 197, 94, 0.1)' : ''">
-                                    <td style="padding: 12px 16px; font-size: 0.875rem; color: var(--text-primary);">{{ item.name }}</td>
-                                    <td style="text-align: center; padding: 12px 16px;">
-                                        <span v-if="item.translated" style="color: #22c55e;">✓</span>
-                                        <span v-else style="color: var(--text-muted);">—</span>
-                                    </td>
-                                    <td style="text-align: center; padding: 12px 16px;">
-                                        <span v-if="item.captioned" style="color: #3b82f6;">✓</span>
-                                        <span v-else style="color: var(--text-muted);">—</span>
-                                    </td>
-                                    <td style="text-align: center; padding: 12px 16px;">
-                                        <span v-if="item.published" style="color: #a855f7;">✓</span>
-                                        <span v-else style="color: var(--text-muted);">—</span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <div v-if="overviewList.length === 0" style="text-align: center; padding: 32px; color: var(--text-muted);">
-                            沒有影片資料
+                    <!-- 影片列表 (網格) -->
+                    <h3 style="font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">影片庫</h3>
+                    <div v-if="schedule.videos.length === 0" class="card" style="text-align: center; padding: 48px; color: var(--text-muted);">
+                        <i data-lucide="video-off" style="width:48px;height:48px; margin-bottom: 12px; opacity: 0.4;"></i>
+                        <div>C:\Users\jeffb\Videos 中沒有影片</div>
+                    </div>
+                    <div v-else style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;">
+                        <div v-for="v in schedule.videos" :key="v.filename" class="card project-card" style="overflow: hidden; padding: 0;">
+                            <!-- Thumbnail -->
+                            <div style="aspect-ratio: 16/9; background: var(--bg-card-hover); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                                <img :src="API_BASE + '/api/publish/thumbnail/' + encodeURIComponent(v.filename)"
+                                     :alt="v.filename"
+                                     style="width: 100%; height: 100%; object-fit: cover;"
+                                     @error="$event.target.style.display='none'; $event.target.parentElement.innerHTML='<i data-lucide=\'film\' style=\'width:40px;height:40px;color:var(--text-muted);opacity:0.3;\'></i>'"
+                                >
+                            </div>
+                            <!-- Info -->
+                            <div style="padding: 12px;">
+                                <div style="font-size: 0.8125rem; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="v.filename">{{ v.filename }}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">{{ v.size_mb }} MB</div>
+                                <button class="btn btn-primary" style="width: 100%; margin-top: 8px; padding: 6px; font-size: 0.8125rem;" @click="openScheduleModal(v.filename)">
+                                    <i data-lucide="calendar-plus" style="width:14px;height:14px;"></i> 排程發文
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 排程 Modal -->
+                    <div v-if="schedule.showModal" style="position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5);" @click.self="schedule.showModal = false">
+                        <div class="card" style="width: 480px; max-width: 90vw; padding: 24px;">
+                            <h3 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary); margin-bottom: 20px;">排程發文</h3>
+
+                            <!-- Video name (readonly) -->
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; font-size: 0.75rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">影片</label>
+                                <input type="text" :value="schedule.form.filename" readonly
+                                    style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-default); border-radius: 6px; background: var(--bg-card-hover); color: var(--text-secondary); font-size: 0.875rem; box-sizing: border-box;">
+                            </div>
+
+                            <!-- Datetime -->
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; font-size: 0.75rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">發文時間</label>
+                                <input type="datetime-local" v-model="schedule.form.scheduled_at"
+                                    style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-default); border-radius: 6px; background: var(--bg-card); color: var(--text-primary); font-size: 0.875rem; box-sizing: border-box;">
+                            </div>
+
+                            <!-- Caption -->
+                            <div style="margin-bottom: 20px;">
+                                <label style="display: block; font-size: 0.75rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Caption</label>
+                                <textarea v-model="schedule.form.caption" rows="5" placeholder="輸入 IG 文案..."
+                                    style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-default); border-radius: 6px; background: var(--bg-card); color: var(--text-primary); font-size: 0.875rem; resize: vertical; box-sizing: border-box; font-family: inherit;"></textarea>
+                            </div>
+
+                            <!-- Buttons -->
+                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                <button class="btn btn-secondary" @click="schedule.showModal = false">取消</button>
+                                <button class="btn btn-primary" style="background: #16a34a;" @click="submitScheduleNow" :disabled="schedule.loading">
+                                    {{ schedule.loading ? '發文中...' : '立即發文' }}
+                                </button>
+                                <button class="btn btn-primary" @click="submitSchedule" :disabled="schedule.loading || !schedule.form.scheduled_at">
+                                    {{ schedule.loading ? '送出中...' : '確認排程' }}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2588,11 +2637,11 @@
                     <span class="bottom-nav-label">{{ t('nav.home') }}</span>
                 </a>
 
-                <div class="bottom-nav-item" :class="{ active: currentView === 'overview' }" @click="currentView = 'overview'">
+                <div class="bottom-nav-item" :class="{ active: currentView === 'schedule' }" @click="currentView = 'schedule'">
                     <div class="bottom-nav-icon">
-                        <i data-lucide="layout-grid" style="width:24px;height:24px;"></i>
+                        <i data-lucide="calendar" style="width:24px;height:24px;"></i>
                     </div>
-                    <span class="bottom-nav-label">總覽</span>
+                    <span class="bottom-nav-label">排程</span>
                 </div>
 
                 <div class="bottom-nav-item" :class="{ active: currentView === 'workflow' }" @click="currentView = 'workflow'">
@@ -4320,6 +4369,12 @@
                 };
 
                 const handleWsMessage = (msg) => {
+                    // IG 排程發文事件
+                    if (msg.type && msg.type.startsWith('ig_publish_')) {
+                        handlePublishWsMessage(msg);
+                        return;
+                    }
+
                     // 翻譯工作流事件
                     if (msg.type && msg.type.startsWith('translate_')) {
                         handleTranslateWsMessage(msg);
@@ -4732,6 +4787,10 @@
                             loadSubtitleConfig();
                             loadPresets();
                         }
+                        if (currentView.value === 'schedule') {
+                            loadScheduleVideos();
+                            loadSchedules();
+                        }
                         connectDownloadWs();
                     } else {
                         // 後端未啟動，顯示提示
@@ -4762,43 +4821,119 @@
                     initIcons();
                 });
 
-                // Overview Dashboard computed properties
-                const overviewList = computed(() => {
-                    const list = [];
-                    const captionMap = {};
+                // IG 排程發文
+                const schedule = ref({
+                    videos: [],
+                    schedules: [],
+                    showModal: false,
+                    form: { filename: '', caption: '', scheduled_at: '' },
+                    loading: false,
+                });
 
-                    // 建立 caption 對照表 (video_name -> caption info)
-                    for (const cap of ig.value.captions) {
-                        captionMap[cap.video_name] = cap;
-                    }
+                const loadScheduleVideos = async () => {
+                    try {
+                        const res = await fetch(API_BASE + '/api/publish/videos');
+                        if (res.ok) schedule.value.videos = await res.json();
+                    } catch (e) { /* ignore */ }
+                };
 
-                    // 從翻譯影片建立列表
-                    for (const video of ts.value.videos) {
-                        const caption = captionMap[video.name];
-                        list.push({
-                            name: video.name,
-                            translated: video.status === 'done',
-                            captioned: !!caption,
-                            published: caption?.published || false,
+                const loadSchedules = async () => {
+                    try {
+                        const res = await fetch(API_BASE + '/api/publish/schedules');
+                        if (res.ok) {
+                            const data = await res.json();
+                            schedule.value.schedules = data.sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
+                        }
+                    } catch (e) { /* ignore */ }
+                };
+
+                const openScheduleModal = (filename) => {
+                    // Default to 1 hour from now
+                    const d = new Date(Date.now() + 3600000);
+                    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                    schedule.value.form = { filename, caption: '', scheduled_at: local };
+                    schedule.value.showModal = true;
+                    nextTick(() => initIcons());
+                };
+
+                const submitSchedule = async () => {
+                    schedule.value.loading = true;
+                    try {
+                        const res = await fetch(API_BASE + '/api/publish/schedules', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(schedule.value.form),
                         });
+                        if (res.ok) {
+                            schedule.value.showModal = false;
+                            showToast('排程已建立', 'success');
+                            await loadSchedules();
+                        } else {
+                            const err = await res.json();
+                            showToast(err.detail || '排程建立失敗', 'error');
+                        }
+                    } catch (e) {
+                        showToast('排程建立失敗', 'error');
+                    } finally {
+                        schedule.value.loading = false;
                     }
+                };
 
-                    return list;
-                });
+                const submitScheduleNow = () => {
+                    // 設定時間為現在（用本地時間，不是 UTC）
+                    const now = new Date();
+                    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
+                    schedule.value.form.scheduled_at = local;
+                    submitSchedule();
+                };
 
-                const overviewStats = computed(() => {
-                    const list = overviewList.value;
-                    return {
-                        total: list.length,
-                        translated: list.filter(i => i.translated).length,
-                        captioned: list.filter(i => i.captioned).length,
-                        published: list.filter(i => i.published).length,
-                    };
-                });
+                const cancelSchedule = async (id) => {
+                    try {
+                        const res = await fetch(API_BASE + '/api/publish/schedules/' + id, { method: 'DELETE' });
+                        if (res.ok) {
+                            schedule.value.schedules = schedule.value.schedules.filter(s => s.id !== id);
+                            showToast('排程已取消', 'success');
+                        }
+                    } catch (e) {
+                        showToast('取消失敗', 'error');
+                    }
+                };
 
-                const refreshOverview = async () => {
-                    await loadTranslateVideos();
-                    await loadIgCaptions();
+                const retrySchedule = async (s) => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/publish/schedules/${s.id}/retry`, { method: 'POST' });
+                        if (!res.ok) throw new Error('Retry failed');
+                        await loadSchedules();
+                    } catch (e) {
+                        showToast('重試失敗: ' + e.message, 'error');
+                    }
+                };
+
+                const dismissSchedule = async (id) => {
+                    try {
+                        await fetch(`${API_BASE}/api/publish/schedules/${id}`, { method: 'DELETE' });
+                        schedule.value.schedules = schedule.value.schedules.filter(s => s.id !== id);
+                    } catch (e) {
+                        showToast('刪除失敗', 'error');
+                    }
+                };
+
+                const handlePublishWsMessage = (msg) => {
+                    const data = msg.data;
+                    if (!data || !data.id) return;
+                    const idx = schedule.value.schedules.findIndex(s => s.id === data.id);
+                    if (idx >= 0) {
+                        schedule.value.schedules[idx] = { ...schedule.value.schedules[idx], ...data };
+                    } else {
+                        schedule.value.schedules.push(data);
+                    }
+                    if (msg.type === 'ig_publish_done') {
+                        showToast(`發文完成：${data.filename}`, 'success');
+                    }
+                    if (msg.type === 'ig_publish_failed') {
+                        showToast(`發文失敗：${data.error || data.filename}`, 'error');
+                    }
+                    nextTick(() => initIcons());
                 };
 
                 // 監視視圖變化，重新初始化圖標並儲存
@@ -4820,10 +4955,10 @@
                         loadIgDrafts();
                         loadIgCaptions();
                     }
-                    // 當切換到總覽時載入影片和文案資料
-                    if (newView === 'overview') {
-                        loadTranslateVideos();
-                        loadIgCaptions();
+                    // 當切換到排程時載入影片和排程列表
+                    if (newView === 'schedule') {
+                        loadScheduleVideos();
+                        loadSchedules();
                     }
                 });
 
@@ -4947,10 +5082,16 @@
                     igSaveCaption,
                     igDeleteCaption,
                     igTogglePublish,
-                    // 總覽 Dashboard
-                    overviewList,
-                    overviewStats,
-                    refreshOverview,
+                    // IG 排程發文
+                    schedule,
+                    loadScheduleVideos,
+                    loadSchedules,
+                    openScheduleModal,
+                    submitSchedule,
+                    submitScheduleNow,
+                    cancelSchedule,
+                    retrySchedule,
+                    dismissSchedule,
                 };
             }
         }).mount('#app');
