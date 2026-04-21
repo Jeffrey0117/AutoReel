@@ -226,12 +226,15 @@ async def open_folder(body: dict):
 
 # --- 靜態 HTML 頁面 ---
 
+_NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}
+
+
 @app.get("/")
 async def serve_index():
     """Serve app.html as the main page."""
     html_file = PROJECT_ROOT / "app.html"
     if html_file.exists():
-        return FileResponse(str(html_file), media_type="text/html")
+        return FileResponse(str(html_file), media_type="text/html", headers=_NO_CACHE)
     return {"error": "app.html not found"}
 
 
@@ -240,7 +243,7 @@ async def serve_html(name: str):
     """Serve any .html file from project root."""
     html_file = PROJECT_ROOT / f"{name}.html"
     if html_file.exists():
-        return FileResponse(str(html_file), media_type="text/html")
+        return FileResponse(str(html_file), media_type="text/html", headers=_NO_CACHE)
     return {"error": f"{name}.html not found"}
 
 
